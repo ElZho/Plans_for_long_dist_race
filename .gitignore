@@ -3,6 +3,7 @@
 .csv
 
 
+guides/
 .mypy_cache/
 .vscode/
 venv/
