@@ -7,6 +7,7 @@ def find_vdot(dist, my_time) -> tuple:
     from datetime import timedelta, datetime
     import csv
 
+    vdot = '85'
     with open('../guides/vdot.csv', encoding='utf-8') as file:
         rows = list(csv.DictReader(file, delimiter=';'))
 

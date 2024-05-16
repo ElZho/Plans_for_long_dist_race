@@ -20,7 +20,7 @@ LEXICON_RU: dict[str, str] = {
 
     'begin': 'Выбери дистанцию, для которой ты можешь сообщить результаты'
 
-   }
+}
 
 LEXICON_COMMANDS_RU: dict[str, str] = {
     '/start': 'Запуск бота',
@@ -45,12 +45,31 @@ LEXICON_YES_NO: dict[str, str] = {
     'no': 'Не хочу!'
 }
 
-
 LEXICON_SELECT_DIST: dict[str, str] = {
-      '0': '5-10K',
-      '1': 'Half marathon',
-      '2': 'My first marathon',
-      '3': 'Marathon (I\'ve already finished the one)'
+    '0': '5-10K',
+    '1': 'Half marathon',
+    '2': 'My first marathon',
+    '3': 'Marathon (I\'ve already finished the one)'
 }
 PAG_BUTTON = {'backward': '<<',
-           'forward': '>>'}
+              'forward': '>>'}
+
+SHOW_DATA: dict[str, dict[str, str]] = {
+    'photo_capt': {
+        'age': 'Возраст',
+        "gender": 'Пол',
+        'weight': 'Вес',
+        'height': 'Рост',
+        'res_distances': 'Дистанция',
+        'result': 'Результат',
+        'IMT': 'Индекс массы тела',
+        "max_pulse": 'Максимальный пульс'
+    },
+    'pulse_zone': {
+        'I зона:': (0.5, 0.6),
+        'II зона:': (0.6, 0.75),
+        'III зона:': (0.75, 0.85),
+        'IV зона:': (0.85, 0.95),
+        'V зона:': (0.95, 1)
+    }
+}

@@ -8,7 +8,7 @@ def get_plan(ind, train_tempos):
     plan = dict()
     for k, val in train_tempos.items():
         exec(k +'= val')
-    print(f_names[ind])
+
     with open('../guides/' + f_names[ind], encoding='utf-8') as file:
         rows = list(csv.DictReader(file, delimiter=';'))
         for row in rows:
