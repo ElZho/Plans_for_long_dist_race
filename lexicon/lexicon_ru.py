@@ -27,24 +27,30 @@ LEXICON_COMMANDS_RU: dict[str, str] = {
     '/help': 'Помощь',
     '/cansel': 'Отмена'
 }
-LEXICON_INLINE_BUTTUNS: dict[str, str] = {
-    '0': '1,5км',
-    '1': 'Миля',
-    '2': '3км',
-    '3': '2 мили',
-    '4': '5км',
-    '5': '10км',
-    '6': '15км',
-    '7': 'Полумарафон',
-    '8': 'Марафон'
 
+LEXICON_INLINE_BUTTUNS: dict[str, str] = {
+    '1500 м': '1,5км',
+    'Миля': 'Миля',
+    '3000 м': '3км',
+    '2 мили': '2 мили',
+    '5000 м': '5км',
+    '10000 м': '10км',
+    '15000 м': '15км',
+    'Полумарафон': 'Полумарафон',
+    'Марафон': 'Марафон'
 }
+
 LEXICON_YES_NO: dict[str, str] = {
     'yes': 'Давай!',
     'no': 'Не хочу!'
 }
 
-LEXICON_YES_NO: dict[str, str] = {
-    'yes': 'Давай!',
-    'no': 'Нет, давай считай уже!'
+
+LEXICON_SELECT_DIST: dict[str, str] = {
+      '0': '5-10K',
+      '1': 'Half marathon',
+      '2': 'My first marathon',
+      '3': 'Marathon (I\'ve already finished the one)'
 }
+PAG_BUTTON = {'backward': '<<',
+           'forward': '>>'}

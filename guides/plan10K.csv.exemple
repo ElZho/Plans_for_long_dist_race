@@ -1,0 +1,13 @@
+week;key run #1;key run #2;key run #3;
+12;'3x400 (400 RI) at {}'.format(m400);'3 K at {}. Required time {}'.format(ST, 3*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+11;'4x400 (400 RI) at {}'.format(m400);'4 K at {}. Required time {}'.format(ST, 4*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+10;'4x400 (400 RI) at {}'.format(m400);'5 K at {}. Required time {}'.format(ST, 5*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+9;'6x400 (400 RI) at {}'.format(m400);'6 K at {}. Required time {}'.format(ST, 6*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+8;'7x400 (400 RI) at {}'.format(m400);'7 K at {}. Required time {}'.format(ST, 7*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+7;'8x400 (400 RI) at {}'.format(m400);'8 K at {}. Required time {}'.format(ST, 8*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+6;'9x400 (400 RI) at {}'.format(m400);'9 K at {}. Required time {}'.format(ST, 9*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+5;'8x400 (400 RI) at {}'.format(m400);'8 K at {}. Required time {}'.format(ST, 8*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+4;'7x400 (400 RI) at {}'.format(m400);'7 K at {}. Required time {}'.format(ST, 7*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+3;'6x400 (400 RI) at {}'.format(m400);'6 K at {}. Required time {}'.format(ST, 6*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+2;'5x400 (400 RI) at {}'.format(m400);'5 K at {}. Required time {}'.format(ST, 5*ST);'7 K at {}. Required time {}'.format(LT, 7*LT);
+1;'4x400 (400 RI) at {}'.format(m400);'4 K at {}. Required time {}'.format(ST, 4*ST);'7 K at {}. Required time {}'.format(LT, 70*LT);

@@ -1,0 +1,13 @@
+week;key run #1;key run #2;key run #3;
+12;'8x400 (400 RI) at {}'.format(m400);'5 K at {}. Required time {}'.format(ST, 5*ST);'10 K at {}. Required time {}'.format(LT, 10*LT);
+11;'5x800 (400 RI) at {}'.format(m800);'3 K at {}, 1,5 K easy, 3 K at {}'.format(ST, ST);'11 K at {}. Required time {}'.format(LT, 11*LT);
+10;'2x1600 (400 RI) at {}, 1x800 (400 RI) at {}'.format(m1600, m800);'6,5 K at {}. Required time {}'.format(MT, 6.5*MT);'13 K at {}. Required time {}'.format(LT, 13*LT);
+9;'400 at {}, 600 at {}, 800 at {}, 800 at {}, 600 at {}, 400 at {}  (400 RI)'.format(m400, m600, m800, m800, m600, m400);'3 K at {}, 1,5 K easy, 1,5 K at {}, 1,5 K easy, 3 K at {}.'.format(ST, ST, ST);'14 K at {}. Required time {}'.format(LT, 14*LT);
+8;'4x1000 (400 RI) at {}'.format(m1000);'6,5 K at {}. Required time {}'.format(ST, 6.5*ST);'16 K at {}. Required time {}'.format(LT, 16*LT);
+7;'1600 at {}, 1200 at {}, 800 at {},  400 at {}  (400 RI)'.format(m1600, m1200, m800, m400);'8 K at {}. Required time {}'.format(MT, 8*MT);'13 K at {}. Required time {}'.format(LT, 13*LT);
+6;'10x400 (90sec RI) at {}'.format(m400);'6,5 K at {}. Required time {}'.format(ST, 6.5*ST);'16 K at {}. Required time {}'.format(LT, 16*LT);
+5;'6x800 (90 sec RI) at {}'.format(m800);'3 K at {}, 1,5 K easy, 3 K at {}, 1,5 K easy, 1.5 K at {}.'.format(ST, ST, ST);'13 K at {}. Required time {}'.format(LT, 13*LT);
+4;'4x1200 (400 RI) at {}'.format(m1200);'5 K at {}. Required time {}'.format(ST, 5*ST);'16 K at {}. Required time {}'.format(LT, 16*LT);
+3;'5x1000 (400 RI) at {}'.format(m1000);'10 K at {}. Required time {}'.format(MT, 10*MT);'13 K at {}. Required time {}'.format(LT, 13*LT);
+2;'3x1600 (400 RI) at {}'.format(m1600);'5 K at {}. Required time {}'.format(ST, 5*ST);'11 K at {}. Required time {}'.format(LT, 11*LT);
+1;'6x400 (90sec RI) at {}'.format(m400);'5 K easy. No additional warmup or cooldown';'10 K Race';

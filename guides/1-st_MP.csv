@@ -1,0 +1,4 @@
+week;key run #1;key run #2;key run #3;
+12;'8x400 (400 RI) at {}'.format(m400);'5 K at {}. Required time {}'.format(ST, 5*ST);'10 K at {}. Required time {}'.format(LT, 10*LT);
+11;'5x800 (400 RI) at {}'.format(m800);'5 K at {}. Required time {}'.format(ST, 5*ST);'11 K at {}. Required time {}'.format(LT, 11*LT);
+1;'6x400 (90sec RI) at {}'.format(m400);'5 K easy. No additional warmup or cooldown';'10 K Race';
