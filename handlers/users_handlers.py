@@ -5,11 +5,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import (CallbackQuery, Message, PhotoSize)
 from aiogram.utils import formatting
 from datetime import timedelta, datetime
-import tabulate
 
 from states.states import FSMFillForm
-from keyboards.keyboards import Sex_markup, Dist_markup, select_dist_markup, create_pagination_keyboard
+from keyboards.keyboards import Sex_markup, Dist_markup, select_dist_markup, create_pagination_keyboard, \
+    create_inline_kb
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
+from lexicon import lexicon_ru
 from calc_func.calculations import find_vdot, count_target_tempo
 from calc_func.planing import get_plan
 
@@ -23,9 +24,9 @@ user_dict: dict[int, dict[str, str | int | bool]] = {}
 @router.message(CommandStart(), StateFilter(default_state))
 async def process_start_command(message: Message):
     await message.answer(
-        text='Этот бот демонстрирует работу FSM\n\n'
-             'Чтобы перейти к заполнению анкеты - '
-             'отправьте команду /fillform'
+        text=lexicon_ru.LEXICON_RU['start']  # 'Этот бот демонстрирует работу FSM\n\n'
+        # 'Чтобы перейти к заполнению анкеты - '
+        # 'отправьте команду /fillform'
     )
 
 
@@ -33,7 +34,7 @@ async def process_start_command(message: Message):
 # и переводить бота в состояние ожидания ввода имени
 @router.message(Command(commands='fillform'), StateFilter(default_state))
 async def process_fillform_command(message: Message, state: FSMContext):
-    await message.answer(text='Пожалуйста, введите ваше имя')
+    await message.answer(text=lexicon_ru.LEXICON_RU['fillform'])
     # Устанавливаем состояние ожидания ввода имени
     await state.set_state(FSMFillForm.fill_name)
 
@@ -44,7 +45,7 @@ async def process_fillform_command(message: Message, state: FSMContext):
 async def process_name_sent(message: Message, state: FSMContext):
     # Cохраняем введенное имя в хранилище по ключу "name"
     await state.update_data(name=message.text)
-    await message.answer(text='Спасибо!\n\nА теперь введите ваш возраст')
+    await message.answer(text=lexicon_ru.LEXICON_RU['name_sent'])
     # Устанавливаем состояние ожидания ввода возраста
     await state.set_state(FSMFillForm.fill_age)
 
@@ -52,12 +53,9 @@ async def process_name_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода имени
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMFillForm.fill_name))
-async def warning_not_name(message: Message):
+async def wrong_name(message: Message):
     await message.answer(
-        text='То, что вы отправили не похоже на имя\n\n'
-             'Пожалуйста, введите ваше имя\n\n'
-             'Если вы хотите прервать заполнение анкеты - '
-             'отправьте команду /cancel'
+        text=lexicon_ru.LEXICON_RU['wrong_name']
     )
 
 
@@ -71,8 +69,9 @@ async def process_age_sent(message: Message, state: FSMContext):
 
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
-        text='Спасибо!\n\nУкажите ваш пол',
-        reply_markup=Sex_markup
+        text=lexicon_ru.LEXICON_RU['fill_age'],
+        # Sex_markup
+        reply_markup=create_inline_kb(2, lexicon_ru.Sex_buttons)
     )
     # Устанавливаем состояние ожидания выбора пола
     await state.set_state(FSMFillForm.fill_gender)
@@ -81,18 +80,16 @@ async def process_age_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода возраста
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMFillForm.fill_age))
-async def warning_not_age(message: Message):
+async def wrong_age(message: Message):
     await message.answer(
-        text='Калькулятор рассчитан на возраст от 16 до 90\n\n'
-             'Если ваш возраст отличается от указанного\n\nто вы можете прервать '
-             'заполнение анкеты - отправьте команду /cancel'
+        text=lexicon_ru.LEXICON_RU['wrong_not_age']
     )
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки при
 # выборе пола, если выбран мужской пол и переводить в состояние ввода веса
 @router.callback_query(StateFilter(FSMFillForm.fill_gender),
-                       F.data.in_(['male']))
+                       F.data.in_(['Мужской']))
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # Cохраняем пол (callback.data нажатой кнопки) в хранилище,
     # по ключу "gender"
@@ -104,8 +101,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # Отправляем пользователю сообщение с клавиатурой
     await callback.message.delete()
     await callback.message.answer(
-        text='Спасибо!\n\nУкажите ваш вес'
-
+        text=lexicon_ru.LEXICON_RU['gender_press']
     )
     # Устанавливаем состояние ожидания выбора пола
     await state.set_state(FSMFillForm.fill_weight)
@@ -114,7 +110,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать на нажатие кнопки при
 # выборе пола, если выбран женский пол и переводить в состояние ввода веса
 @router.callback_query(StateFilter(FSMFillForm.fill_gender),
-                       F.data.in_(['female']))
+                       F.data.in_(['Женский']))
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # Cохраняем пол (callback.data нажатой кнопки) в хранилище,
     # по ключу "gender"
@@ -126,8 +122,7 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # Отправляем пользователю сообщение с клавиатурой
     await callback.message.delete()
     await callback.message.answer(
-        text='Спасибо!\n\nУкажите ваш вес'
-
+        text=lexicon_ru.LEXICON_RU['gender_press']
     )
     # Устанавливаем состояние ожидания выбора пола
     await state.set_state(FSMFillForm.fill_weight)
@@ -136,14 +131,15 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
 # Этот хэндлер будет срабатывать, если введен вес
 # и переводить в состояние ввода дистанции
 @router.message(StateFilter(FSMFillForm.fill_weight),
-                lambda x: x.text.isdigit() and 35.0 <= int(x.text) <= 150.0)
+                lambda x: x.text.replace(',', '').replace('.', '').isdigit()
+                          and 35.0 <= float(x.text.replace(',', '.')) <= 150.0)
 async def process_weight_sent(message: Message, state: FSMContext):
     # Cохраняем вес в хранилище по ключу "weight"
-    await state.update_data(weight=float(message.text))
+    await state.update_data(weight=float(message.text.replace(',', '.')))
 
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
-        text='Спасибо!\n\nВведите рост'
+        text=lexicon_ru.LEXICON_RU['fill_weight']
     )
     # Устанавливаем состояние ожидания выбора пола
     await state.set_state(FSMFillForm.fill_height)
@@ -152,49 +148,47 @@ async def process_weight_sent(message: Message, state: FSMContext):
 # Этот хэндлер будет срабатывать, если во время ввода возраста
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMFillForm.fill_weight))
-async def warning_not_weight(message: Message):
+async def wrong_weight(message: Message):
     await message.answer(
-        text='Калькулятор рассчитан на вес от 35 до 150 кг\n\n'
-             'Если ваш вес отличается от указанного,\n\nто вы можете прервать '
-             'заполнение анкеты - отправьте команду /cancel'
+        text=lexicon_ru.LEXICON_RU['wrong_weight']
     )
 
 
 # Этот хэндлер будет срабатывать, если введен вес
 # и переводить в состояние ввода дистанции
 @router.message(StateFilter(FSMFillForm.fill_height),
-                lambda x: all(map(lambda b: b.isdigit(), x.text.split('.'))) and 135.0 <= float(x.text) <= 250.0)
+                lambda x: x.text.replace(',', '').replace('.', '').isdigit()
+                          and 135.0 <= float(x.text.replace(',', '.')) <= 250.0)
 async def process_weight_sent(message: Message, state: FSMContext):
     # Cохраняем вес в хранилище по ключу "weight"
-    await state.update_data(height=float(message.text))
+    await state.update_data(height=float(message.text.replace(',', '.')))
 
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
-        text='Спасибо!\n\nВведите дистанцию, за которую\nхотите ввести свои результаты',
-        reply_markup=Dist_markup
+        text=lexicon_ru.LEXICON_RU['fill_height'],
+        # Dist_markup
+        reply_markup=create_inline_kb(3,
+                                      LEXICON_INLINE_BUTTUNS)
     )
-    # Устанавливаем состояние ожидания выбора пола
+    # Устанавливаем состояние ожидания выбора дистанции
     await state.set_state(FSMFillForm.fill_res_distances)
 
 
 # Этот хэндлер будет срабатывать, если во время ввода роста
 # будет введено что-то некорректное
 @router.message(StateFilter(FSMFillForm.fill_height))
-async def warning_not_weight(message: Message):
+async def wrong_height(message: Message):
     await message.answer(
-        text='Калькулятор рассчитан на рост от 135 до 250 см\n\n'
-             'Если ваш вес отличается от указанного,\n\nто вы можете прервать '
-             'заполнение анкеты - отправьте команду /cancel'
+        text= lexicon_ru.LEXICON_RU['wrong_height']
     )
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки при
 # выборе дистанции и переводить в состояние ввода результата
 @router.callback_query(StateFilter(FSMFillForm.fill_res_distances), F.data.in_(LEXICON_INLINE_BUTTUNS))
-async def process_res_distances(callback: CallbackQuery, state: FSMContext):
+async def select_distances(callback: CallbackQuery, state: FSMContext):
     # Cохраняем дистанцию (callback.data нажатой кнопки) в хранилище,
     # по ключу "res_distances"
-
     await state.update_data(res_distances=callback.data)
     t = callback.data
     # Отправляем пользователю сообщение с клавиатурой
@@ -351,8 +345,8 @@ async def process_showdata_command(message: Message, state: FSMContext):
                                                            *[f"{v}: {user_dict[message.from_user.id][k]}"
                                                              for k, v in
                                                              SHOW_DATA['photo_capt'].items()]), sep="\n\n", )),
-                                                       pulse,
-                                                       formatting.BotCommand('/calculate'),
+                                 pulse,
+                                 formatting.BotCommand('/calculate'),
                                  sep="\n\n",
                                  )
     if message.from_user.id in user_dict:
@@ -372,16 +366,18 @@ async def process_calcvdot_command(message: Message, state: FSMContext):
     count_tempo = count_target_tempo(results['5000 м'], vdot)
 
     # оформляем достижимые результаты
-    target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ') for k, v in results.items()]
+    target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
+                      for k, v in results.items() if k != 'VD0T']
     # оформляем темпы для тренировок
     paces = [formatting.as_line(k, v, sep=' ') for k, v in count_tempo.items()]
     # оформляем сообщение
-    content = formatting.as_list(formatting.as_marked_section(
-        formatting.Bold("Достижимые результаты на разных дистанциях:\n"),
+    content = formatting.as_list(formatting.as_line('Твой VO2max - ', results['VD0T']),
+                                 formatting.as_marked_section(
+        formatting.Bold("Достижимые результаты для тебя на разных дистанциях:\n"),
         *target_results,
         marker="🔸 ", ),
         formatting.as_marked_section(
-            formatting.Bold("Тренировочные темпы для разных дистанций\n"),
+            formatting.Bold("Твои тренировочные темпы для разных дистанций\n"),
             *paces,
             marker="🔸 ", ),
     )
@@ -397,20 +393,19 @@ async def process_calcvdot_command(callback: CallbackQuery, state: FSMContext):
     x = await state.get_data()
     train_plan = get_plan(d, x['count_tempo'])
     user_dict[callback.from_user.id]['plan'] = train_plan
-    # dict(
-    #     [(int(k), 'Week {}:\n-------\n1-st train: {}.\n2-nd train: {}.\n3-rd train: {}.'.format(k, *v))
-    #      for k, v in train_plan.items()])
+    #
     user_dict[callback.from_user.id]['page'] = len(user_dict[callback.from_user.id]['plan'])
 
     text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
     page = f"Неделя: {user_dict[callback.from_user.id]['page']}\n"
-    training = [formatting.as_line(i+1, '-я тренировка ', text[i]) for i in range(3)]
+    training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
 
     content = formatting.as_marked_section(
         formatting.Bold(page),
         *training,
         marker="🔸 ",
     )
+    await callback.message.delete()
     await callback.message.answer(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
         'backward',
         f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
@@ -439,6 +434,7 @@ async def process_forward_press(callback: CallbackQuery):
             f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
             'forward'))
     await callback.answer()
+
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "назад"
 # во время взаимодействия пользователя с сообщением-книгой

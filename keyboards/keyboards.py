@@ -83,3 +83,23 @@ def create_pagination_keyboard(*buttons: str) -> InlineKeyboardMarkup:
     )
     # Возвращаем объект инлайн-клавиатуры
     return kb_builder.as_markup()
+
+
+def create_inline_kb(width: int,
+                     Button_name: dict) -> InlineKeyboardMarkup:
+    # Инициализируем билдер
+    kb_builder = InlineKeyboardBuilder()
+    # Инициализируем список для кнопок
+    buttons: list[InlineKeyboardButton] = []
+
+    # Заполняем список кнопками из аргументов args и kwargs
+    for button, text in Button_name.items():
+        buttons.append(InlineKeyboardButton(
+            text=text,
+            callback_data=button))
+
+    # Распаковываем список с кнопками в билдер методом row c параметром width
+    kb_builder.row(*buttons, width=width)
+
+    # Возвращаем объект инлайн-клавиатуры
+    return kb_builder.as_markup()
