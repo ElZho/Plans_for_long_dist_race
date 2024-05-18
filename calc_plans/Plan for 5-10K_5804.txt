@@ -1,0 +1,122 @@
+<h1 Plan for 5-10K</h2>
+План состоит из 12 - 16 тренировочных недель. На каждой неделе необходимо
+выполнить 3 тренировки1-я тренировка - интервальная, 2-я тренировка - темповая,
+3-й тренировка рассчитана на повышениевыносливости.
+Обратите внимание, что рекомендованные темпы рассчитаны на основании среднеста-
+тистических данных. Поэтому при выполнении тренировок ориентируйтесь на свои
+ощущения.После тренировки вы не должны чувствовать изнеможение. Тренировка это часть жизни.
+У вас должныоставаться силы на общение с семьей и друзьями.
+Если вам тяжело выполнять этот план тренировок, рекомендуется его пересчитать,
+указав более низкуюскорость. Оптимальной для расчета является дистанция 5 или 10 км.
+Поэтому если вы только начинаете бегать и у вас нет результатов на 5 км,
+план рекомендуется пересчитать, когда у вас появятся результатына 5 км.
+
+Легенда
+8x400 (400 RI) - 8 раз по 400 m с отдыхом 400m.
+6x800 (90 sec RI) - 6 раз по 800 метров с отдыхом 90 сек.
+
+12 week  to race: 
+-------
+1-st train: 8x400 (400 RI) at 0:04:03.
+2-nd train: 5 K at 0:04:37.
+Required time 0:23:05.
+3-rd train: 10 K at 0:04:56.
+Required time 0:49:20.
+11 week  to race: 
+-------
+1-st train: 5x800 (400 RI) at 0:04:08.
+2-nd train: 3 K at 0:04:37,
+1,5 K easy,
+3 K at 0:04:37.
+3-rd train: 11 K at 0:04:56.
+Required time 0:54:16.
+10 week  to race: 
+-------
+1-st train: 2x1600 (400 RI) at 0:04:18,
+1x800 (400 RI) at 0:04:08.
+2-nd train: 6,5 K at 0:04:47.
+Required time 0:31:05.500000.
+3-rd train: 13 K at 0:04:56.
+Required time 1:04:08.
+9 week  to race: 
+-------
+1-st train: 400 at 0:04:03,
+600 at 0:04:07,
+800 at 0:04:08,
+800 at 0:04:08,
+600 at 0:04:07,
+400 at 0:04:03
+(400 RI).
+2-nd train: 3 K at 0:04:37,
+1,5 K easy,
+1,5 K at 0:04:37,
+1,5 K easy,
+3 K at 0:04:37..
+3-rd train: 14 K at 0:04:56.
+Required time 1:09:04.
+8 week  to race: 
+-------
+1-st train: 4x1000 (400 RI) at 0:04:10.
+2-nd train: 6,5 K at 0:04:37.
+Required time 0:30:00.500000.
+3-rd train: 16 K at 0:04:56.
+Required time 1:18:56.
+7 week  to race: 
+-------
+1-st train: 1600 at 0:04:18,
+1200 at 0:04:14,
+800 at 0:04:08,
+400 at 0:04:03
+(400 RI).
+2-nd train: 8 K at 0:04:47.
+Required time 0:38:16.
+3-rd train: 13 K at 0:04:56.
+Required time 1:04:08.
+6 week  to race: 
+-------
+1-st train: 10x400 (90sec RI) at 0:04:03.
+2-nd train: 6,5 K at 0:04:37.
+Required time 0:30:00.500000.
+3-rd train: 16 K at 0:04:56.
+Required time 1:18:56.
+5 week  to race: 
+-------
+1-st train: 6x800 (90 sec RI) at 0:04:08.
+2-nd train: 3 K at 0:04:37, 1,5 K easy,
+3 K at 0:04:37,
+1,5 K easy,
+1.5 K at 0:04:37..
+3-rd train: 13 K at 0:04:56.
+Required time 1:04:08.
+4 week  to race: 
+-------
+1-st train: 4x1200 (400 RI) at 0:04:14.
+2-nd train: 5 K at 0:04:37.
+Required time 0:23:05.
+3-rd train: 16 K at 0:04:56.
+Required time 1:18:56.
+3 week  to race: 
+-------
+1-st train: 5x1000 (400 RI) at 0:04:10.
+2-nd train: 10 K at 0:04:47.
+Required time 0:47:50.
+3-rd train: 13 K at 0:04:56.
+Required time 1:04:08.
+2 week  to race: 
+-------
+1-st train: 3x1600 (400 RI) at 0:04:18.
+2-nd train: 5 K at 0:04:37.
+Required time 0:23:05.
+3-rd train: 11 K at 0:04:56.
+Required time 0:54:16.
+1 week  to race: 
+-------
+1-st train: 6x400 (90sec RI) at 0:04:03.
+2-nd train: 5 K easy. No additional warmup or cooldown.
+3-rd train: 10 K Race.
+
+Legenda
+-------
+8x400 (400 RI) - 8 times for 400 m with rest 400m
+6x800 (90 sec RI) - 6 times for 400 m with rest 90 sec
+1,5 км easy - 1,5 K on 2-nd pulse zone

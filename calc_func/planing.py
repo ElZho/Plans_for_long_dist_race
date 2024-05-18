@@ -17,3 +17,17 @@ def get_plan(ind, train_tempos):
     return plan
 
 
+def sent_plan(distance, Info_text, train_plan, ID):
+    print('start')
+    with open('../calc_plans/Plan for ' +distance + '_'+ str(ID) +'.txt', 'w', encoding='utf-8') as file:
+
+        file.write('<h1 Plan for ' + distance + '</h2>\n')
+        file.writelines(Info_text)
+        file.writelines(['\n{} week  to race: \n-------\n1-st train: {}.\n2-nd train: {}.\n3-rd train: {}.'.format(k, *v)
+                         for k, v in train_plan.items()])
+        file.write('\n\nLegenda\n-------\n')
+        file.write('8x400 (400 RI) - 8 times for 400 m with rest 400m\n')
+        file.write('6x800 (90 sec RI) - 6 times for 400 m with rest 90 sec\n')
+        file.write('1,5 км easy - 1,5 K on 2-nd pulse zone')
+
+

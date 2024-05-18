@@ -1,18 +1,18 @@
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.fsm.state import default_state, State, StatesGroup
+from aiogram.fsm.state import default_state
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (CallbackQuery, Message, PhotoSize)
 from aiogram.utils import formatting
 from datetime import timedelta, datetime
+from re import findall
 
 from states.states import FSMFillForm
-from keyboards.keyboards import Sex_markup, Dist_markup, select_dist_markup, create_pagination_keyboard, \
-    create_inline_kb
+from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
 from lexicon import lexicon_ru
 from calc_func.calculations import find_vdot, count_target_tempo
-from calc_func.planing import get_plan
+from calc_func.planing import get_plan, sent_plan
 
 router = Router()
 
@@ -179,7 +179,7 @@ async def process_weight_sent(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMFillForm.fill_height))
 async def wrong_height(message: Message):
     await message.answer(
-        text= lexicon_ru.LEXICON_RU['wrong_height']
+        text=lexicon_ru.LEXICON_RU['wrong_height']
     )
 
 
@@ -194,11 +194,10 @@ async def select_distances(callback: CallbackQuery, state: FSMContext):
     # Отправляем пользователю сообщение с клавиатурой
     await callback.message.delete()
     await callback.message.answer(
-        text=f'{t} Спасибо!\n\nУкажите ваш результат. Сначала часы:'
-
+        text=lexicon_ru.LEXICON_RU['select_distances'].format(t)
     )
     # Устанавливаем состояние ожидания выбора пола
-    await state.set_state(FSMFillForm.fill_res_hours)
+    await state.set_state(FSMFillForm.fill_res_time)
 
 
 # Этот хэндлер будет срабатывать, если во время ввода дистанции
@@ -206,88 +205,36 @@ async def select_distances(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMFillForm.fill_res_distances))
 async def warning_not_distances(message: Message):
     await message.answer(
-        text='Нажмите кнопку выбора дистанции\n\n'
-             'Если ошиблись, повторите ввод.'
+        text=lexicon_ru.LEXICON_RU['warning_not_distances']
     )
 
 
 # Этот хэндлер будет срабатывать, если введенs часы
 # и переводить в состояние ввода дистанции
-@router.message(StateFilter(FSMFillForm.fill_res_hours),
-                lambda x: x.text.isdigit() and 0 <= int(x.text) <= 24)
-async def process_hours_sent(message: Message, state: FSMContext):
-    # Cохраняем часы в хранилище по ключу "res_hours"
-    await state.update_data(res_hours=int(message.text))
+@router.message(StateFilter(FSMFillForm.fill_res_time),
+                lambda x: len(findall(r'(\d{2})', x.text)) == 3)
+async def process_res_time_sent(message: Message, state: FSMContext):
+
+    # Превращаем часы, минуты, секунды в время"
+    h, m, s = findall(r'(\d{2})', message.text)
+
+    # Cохраняем часы в хранилище по ключу "result"
+    await state.update_data(result=timedelta(hours=int(h), minutes=int(m), seconds=int(s)))
 
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
-        text='Спасибо!\n\nТеперь минуты'
-    )
-    # Устанавливаем состояние ожидания выбора пола
-    await state.set_state(FSMFillForm.fill_res_minutes)
-
-
-# Этот хэндлер будет срабатывать, если во время ввода часов
-# будет введено что-то некорректное
-@router.message(StateFilter(FSMFillForm.fill_res_hours))
-async def warning_not_age(message: Message):
-    await message.answer(
-        text='Часы должны быть целое число в пределах 24-х\n\n'
-             'Если ошиблись, повторите ввод.'
-    )
-
-
-# Этот хэндлер будет срабатывать, если введены минуты
-# и переводить в состояние ввода секунд
-@router.message(StateFilter(FSMFillForm.fill_res_minutes),
-                lambda x: x.text.isdigit() and 0 <= int(x.text) <= 60)
-async def process_age_sent(message: Message, state: FSMContext):
-    # Cохраняем минуты в хранилище по ключу "minutes"
-    await state.update_data(res_minutes=int(message.text))
-
-    # Отправляем пользователю сообщение с клавиатурой
-    await message.answer(
-        text='Спасибо!\n\nТеперь секунды'
-    )
-    # Устанавливаем состояние ожидания выбора пола
-    await state.set_state(FSMFillForm.fill_res_sec)
-
-
-# Этот хэндлер будет срабатывать, если во время ввода минут
-# будет введено что-то некорректное
-@router.message(StateFilter(FSMFillForm.fill_res_minutes))
-async def warning_not_age(message: Message):
-    await message.answer(
-        text='Минуты должны быть целое число в пределах 60-х\n\n'
-             'Если ошиблись, повторите ввод.'
-    )
-
-
-# Этот хэндлер будет срабатывать, если введены секунды
-# и переводить в состояние ввода фото
-@router.message(StateFilter(FSMFillForm.fill_res_sec),
-                lambda x: x.text.isdigit() and (0 <= float(x.text) < 61
-                                                or 0 <= int(x.text) <= 60))
-async def process_sec_sent(message: Message, state: FSMContext):
-    # Cохраняем секунды в хранилище по ключу "sec"
-
-    await state.update_data(res_secs=float(message.text))
-
-    # Отправляем пользователю сообщение с клавиатурой
-    await message.answer(
-        text='Спасибо!\n\nТеперь добавьте фото'
+        text=lexicon_ru.LEXICON_RU['time_sent']
     )
     # Устанавливаем состояние ожидания выбора пола
     await state.set_state(FSMFillForm.upload_photo)
 
 
-# Этот хэндлер будет срабатывать, если во время ввода секунд
+# Этот хэндлер будет срабатывать, если во время ввода часов
 # будет введено что-то некорректное
-@router.message(StateFilter(FSMFillForm.fill_res_sec))
-async def warning_not_sec(message: Message):
+@router.message(StateFilter(FSMFillForm.fill_res_time))
+async def warning_wrong_time(message: Message):
     await message.answer(
-        text='Секунды должны быть в пределах 61-х\n\n'
-             'Если ошиблись, повторите ввод.'
+        text=lexicon_ru.LEXICON_RU['warning_wrong_time']
     )
 
 
@@ -308,9 +255,7 @@ async def process_photo_sent(message: Message,
 
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
-        text='Спасибо!\n\n'
-             'Чтобы посмотреть данные вашей '
-             'анкеты - отправьте команду /showdata'
+        text=lexicon_ru.LEXICON_RU['photo_sent']
     )
     await state.set_state(FSMFillForm.wait_calc)
 
@@ -319,12 +264,7 @@ async def process_photo_sent(message: Message,
 # и отправлять в чат данные анкеты, либо сообщение об отсутствии данных
 @router.message(Command(commands='showdata'), StateFilter(FSMFillForm.wait_calc))
 async def process_showdata_command(message: Message, state: FSMContext):
-    # Превращаем часы, минуты, секунды в время"
-    user_dict[message.from_user.id]['result'] = timedelta(hours=user_dict[message.from_user.id]["res_hours"],
-                                                          minutes=user_dict[message.from_user.id]["res_minutes"],
-                                                          seconds=user_dict[message.from_user.id]["res_secs"])
-    # сохраняем в состояния
-    await state.update_data(result=user_dict[message.from_user.id]['result'])
+
     # считаем пульсовые зоны
     pulse_zone = [formatting.as_line(k, round(v[0] * user_dict[message.from_user.id]["max_pulse"]), '-',
                                      round(v[1] * user_dict[message.from_user.id]["max_pulse"]), sep=' ')
@@ -332,7 +272,7 @@ async def process_showdata_command(message: Message, state: FSMContext):
 
     # готовим сообщение
     pulse = formatting.as_marked_section(
-        formatting.Bold("Пульсовые зоны:"),
+        formatting.Bold(lexicon_ru.LEXICON_RU['showdata']),
         *pulse_zone,
         marker="🔸 ",
     )
@@ -342,7 +282,7 @@ async def process_showdata_command(message: Message, state: FSMContext):
     name = f'Имя - {user_dict[message.from_user.id]["name"]}\n'
     caption = formatting.as_list(formatting.as_section(formatting.Bold(name),
                                                        formatting.as_list(formatting.as_list(
-                                                           *[f"{v}: {user_dict[message.from_user.id][k]}"
+                                                           *[formatting.as_key_value(v, user_dict[message.from_user.id][k])
                                                              for k, v in
                                                              SHOW_DATA['photo_capt'].items()]), sep="\n\n", )),
                                  pulse,
@@ -356,7 +296,7 @@ async def process_showdata_command(message: Message, state: FSMContext):
 
 
 @router.message(Command(commands='calculate'), StateFilter(FSMFillForm.wait_calc))
-async def process_calcvdot_command(message: Message, state: FSMContext):
+async def process_calculate_vdot_command(message: Message, state: FSMContext):
     my_current_time = datetime.strptime(str(user_dict[message.from_user.id]['result']), '%H:%M:%S')
 
     distance = [user_dict[message.from_user.id]["res_distances"]]
@@ -371,63 +311,80 @@ async def process_calcvdot_command(message: Message, state: FSMContext):
     # оформляем темпы для тренировок
     paces = [formatting.as_line(k, v, sep=' ') for k, v in count_tempo.items()]
     # оформляем сообщение
-    content = formatting.as_list(formatting.as_line('Твой VO2max - ', results['VD0T']),
+    content = formatting.as_list(
+        formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0], results['VD0T']),
                                  formatting.as_marked_section(
-        formatting.Bold("Достижимые результаты для тебя на разных дистанциях:\n"),
+        formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
         *target_results,
         marker="🔸 ", ),
         formatting.as_marked_section(
-            formatting.Bold("Твои тренировочные темпы для разных дистанций\n"),
+            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
             *paces,
             marker="🔸 ", ),
     )
 
     await state.update_data(count_tempo=count_tempo)
-    await message.answer(**content.as_kwargs(), reply_markup=select_dist_markup)
+    await message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
     await state.set_state(FSMFillForm.select_dist)
 
 
+# получаем план тренировок и выкладываем его в виде книги
 @router.callback_query(StateFilter(FSMFillForm.select_dist), F.data.in_(LEXICON_SELECT_DIST))
-async def process_calcvdot_command(callback: CallbackQuery, state: FSMContext):
+async def process_calculate_plan_command(callback: CallbackQuery, state: FSMContext):
     d = int(callback.data)
+    await state.update_data(selected_dist=d)
     x = await state.get_data()
     train_plan = get_plan(d, x['count_tempo'])
+    await state.update_data(plan=train_plan)
     user_dict[callback.from_user.id]['plan'] = train_plan
     #
     user_dict[callback.from_user.id]['page'] = len(user_dict[callback.from_user.id]['plan'])
 
     text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
-    page = f"Неделя: {user_dict[callback.from_user.id]['page']}\n"
-    training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
+    page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict[callback.from_user.id]['page'])
+    training = [formatting.as_line(i + 1, lexicon_ru.LEXICON_RU['process_calculate_plan_command'][1],
+                                   text[i]) for i in range(3)]
 
-    content = formatting.as_marked_section(
-        formatting.Bold(page),
-        *training,
-        marker="🔸 ",
+    content = formatting.as_list(
+        formatting.as_marked_section(
+            formatting.Bold(page),
+            *training,
+            marker="🔸 ",
+        ),
+        formatting.BotCommand('/get_plan_in_file')
     )
-    await callback.message.delete()
+
+
+    await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
         'backward',
         f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
         'forward'))
-
-    await state.clear()
+    await state.set_state(FSMFillForm.wait_sent_file)
+    # await state.clear()
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "вперед"
 # во время взаимодействия пользователя с сообщением-книгой
-@router.callback_query(F.data == 'forward')
-async def process_forward_press(callback: CallbackQuery):
+@router.callback_query(StateFilter(FSMFillForm.wait_sent_file), F.data == 'forward')
+async def process_forward_press(callback: CallbackQuery, state: FSMContext):
     if user_dict[callback.from_user.id]['page'] > 1:
         user_dict[callback.from_user.id]['page'] -= 1
         text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
-        page = f"Неделя: {user_dict[callback.from_user.id]['page']}\n"
-        training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
+        page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict[callback.from_user.id]['page'])
+        # training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
+        training = [formatting.as_key_value(formatting.as_line(i + 1,
+                                            lexicon_ru.LEXICON_RU['process_calculate_plan_command'][1],
+                                                               end='\n------------\n'),
+                                            text[i], ) for i in range(3)]
 
-        content = formatting.as_marked_section(
-            formatting.Bold(page),
-            *training,
-            marker="🔸 ",
+        content = formatting.as_list(
+            formatting.as_marked_section(
+                formatting.Bold(page),
+                *training,
+                marker="🔸 ",
+            ),
+            formatting.BotCommand('/get_plan_in_file')
         )
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
@@ -438,21 +395,37 @@ async def process_forward_press(callback: CallbackQuery):
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "назад"
 # во время взаимодействия пользователя с сообщением-книгой
-@router.callback_query(F.data == 'backward')
-async def process_backward_press(callback: CallbackQuery):
+@router.callback_query(StateFilter(FSMFillForm.wait_sent_file), F.data == 'backward')
+async def process_backward_press(callback: CallbackQuery, state: FSMContext):
     if user_dict[callback.from_user.id]['page'] < len(user_dict[callback.from_user.id]['plan']):
         user_dict[callback.from_user.id]['page'] += 1
         text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
-        page = f"Неделя: {user_dict[callback.from_user.id]['page']}\n"
-        training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
+        page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict[callback.from_user.id]['page'])
+        training = [formatting.as_key_value(formatting.as_line(i + 1,
+                                                               lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
+                                                                   1]),
+                                            text[i]) for i in range(3)]
 
-        content = formatting.as_marked_section(
-            formatting.Bold(page),
-            *training,
-            marker="🔸 ",
+        content = formatting.as_list(
+            formatting.as_marked_section(
+                formatting.Bold(page),
+                *training,
+                marker="🔸 ",
+            ),
+            formatting.BotCommand('/get_plan_in_file')
         )
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
             f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
             'forward'))
     await callback.answer()
+
+@router.message(Command(commands='get_plan_in_file'), StateFilter(FSMFillForm.wait_sent_file))
+async def process_sent_file(message: Message, state: FSMContext):
+    print(message.chat.id)
+    x = await state.get_data()
+    print(x['selected_dist'])
+    dist = LEXICON_SELECT_DIST[str(x['selected_dist'])]
+    train_plan = x['plan']
+    sent_plan(dist, lexicon_ru.LEXICON_RU['Info_text'], train_plan, message.message_id)
+    await state.clear()
