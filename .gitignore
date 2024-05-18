@@ -3,6 +3,7 @@
 .csv
 
 
+calc_plans/
 guides/
 .mypy_cache/
 .vscode/
