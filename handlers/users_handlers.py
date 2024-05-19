@@ -521,7 +521,6 @@ async def process_sent_file(message: Message, state: FSMContext):
 
 @router.message(StateFilter(FSMFillForm.wait_calc))
 async def warning_showdata_command(message: Message, state: FSMContext):
-    await message.answer(state.__dict__)
     await message.answer(
         text=(lexicon_ru.LEXICON_RU['wrong_an'] + ' - ' + message.data)
     )
