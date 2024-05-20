@@ -24,7 +24,8 @@ def sent_plan(distance: str, Info_text: str, train_plan: dict, id: int) -> str:
 
         file.write('<h1 Plan for ' + distance + '</h2>\n')
         file.writelines(Info_text)
-        file.writelines(['\n{} week  to race: \n-------\n1-st train: {}.\n2-nd train: {}.\n3-rd train: {}.'.format(k, *v)
+        file.writelines(['\n{} week  to race: \n-------__________\n1-st train: {}.\n'
+                         '2-nd train: {}.\n3-rd train: {}.'.format(k, *v)
                          for k, v in train_plan.items()])
         file.write('\n\nLegenda\n-------\n')
         file.write('8x400 (400 RI) - 8 times for 400 m with rest 400m\n')

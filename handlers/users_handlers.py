@@ -15,10 +15,9 @@ from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW
 from lexicon import lexicon_ru
 from calc_func.calculations import find_vdot, count_target_tempo
 from calc_func.planing import get_plan, sent_plan
+from filters.filtres import CheckTime
 
 router = Router()
-
-user_dict: dict[int, dict[str, str | int | bool]] = {}
 
 
 # Этот хэндлер будет срабатывать на команду /start вне состояний
@@ -26,9 +25,16 @@ user_dict: dict[int, dict[str, str | int | bool]] = {}
 @router.message(CommandStart(), StateFilter(default_state))
 async def process_start_command(message: Message):
     await message.answer(
-        text=lexicon_ru.LEXICON_RU['start']  # 'Этот бот демонстрирует работу FSM\n\n'
-        # 'Чтобы перейти к заполнению анкеты - '
-        # 'отправьте команду /fillform'
+        text=lexicon_ru.LEXICON_RU['start']
+    )
+
+
+# Этот хэндлер будет срабатывать на команду /help вне состояний
+# и рассказывать о возможностях системы и сообщать команды.
+@router.message(Command(commands='help'))
+async def process_start_command(message: Message):
+    await message.answer(
+        text=lexicon_ru.LEXICON_RU['help']
     )
 
 
@@ -36,7 +42,6 @@ async def process_start_command(message: Message):
 # не равным по умолчанию и сообщать, что эта команда работает внутри машины состояний
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel_command_state(message: Message, state: FSMContext):
-
     await message.answer(
         text=lexicon_ru.LEXICON_RU['cansel in FSM']
     )
@@ -143,8 +148,8 @@ async def process_gender_press(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(StateFilter(FSMFillForm.fill_gender),
-                      ~ F.data.in_(['Женский', 'Мужской']))
-async def process_gender_press(callback: CallbackQuery, state: FSMContext):
+                       ~ F.data.in_(['Женский', 'Мужской']))
+async def process_gender_press(callback: CallbackQuery):
     await callback.answer(
         text=lexicon_ru.LEXICON_RU['wrong_ans']
     )
@@ -233,8 +238,8 @@ async def warning_not_distances(message: Message):
 
 # Этот хэндлер будет срабатывать, если введенs часы
 # и переводить в состояние ввода дистанции
-@router.message(StateFilter(FSMFillForm.fill_res_time),
-                lambda x: len(findall(r'(\d{2})', x.text)) == 3)
+@router.message(StateFilter(FSMFillForm.fill_res_time), CheckTime())
+                # lambda x: len(findall(r'(\d{2})', x.text)) == 3)
 async def process_res_time_sent(message: Message, state: FSMContext):
     # Превращаем часы, минуты, секунды в время"
     h, m, s = findall(r'(\d{2})', message.text)
@@ -294,15 +299,15 @@ async def warning_not_photo(message: Message):
 @router.message(Command(commands='showdata'), StateFilter(FSMFillForm.wait_calc))
 async def process_showdata_command(message: Message, state: FSMContext):
     # получаем данные пользователя
-    user_dict[message.from_user.id] = await state.get_data()
+    user_dict = await state.get_data()
     # считаем пульсовые зоны
-    pulse_zone = [formatting.as_line(k, round(v[0] * user_dict[message.from_user.id]['max_pulse']), '-',
-                                     round(v[1] * user_dict[message.from_user.id]["max_pulse"]), sep=' ')
+    pulse_zone = [formatting.as_line(k, round(v[0] * user_dict['max_pulse']), '-',
+                                     round(v[1] * user_dict["max_pulse"]), sep=' ')
                   for k, v in SHOW_DATA['pulse_zone'].items()]
     # считаем ИМТ
-    user_dict[message.from_user.id]["IMT"] = round(user_dict[message.from_user.id]["weight"] * 1000 /
-                                                   user_dict[message.from_user.id]["height"] ** 2, 2)
-    await state.update_data(pulse_zone=pulse_zone, IMT=user_dict[message.from_user.id]["IMT"])
+    user_dict["IMT"] = round(user_dict["weight"] * 1000 /
+                             user_dict["height"] ** 2, 2)
+    await state.update_data(pulse_zone=pulse_zone, IMT=user_dict["IMT"])
     # готовим сообщение
     pulse = formatting.as_marked_section(
         formatting.Bold(lexicon_ru.LEXICON_RU['showdata']),
@@ -310,49 +315,49 @@ async def process_showdata_command(message: Message, state: FSMContext):
         marker="🔸 ",
     )
     # формируем текст ответа
-    name = f'Имя - {user_dict[message.from_user.id]["name"]}\n'
+    name = f'Имя - {user_dict["name"]}\n'
     caption = formatting.as_list(formatting.as_section(formatting.Bold(name),
                                                        formatting.as_list(formatting.as_list(
                                                            *[formatting.as_key_value(v,
-                                                                                     user_dict[message.from_user.id][k])
+                                                                                     user_dict[k])
                                                              for k, v in
                                                              SHOW_DATA['photo_capt'].items()]), sep="\n\n", )),
                                  pulse,
                                  formatting.BotCommand('/calculate'),
                                  sep="\n\n",
                                  )
-    if message.from_user.id in user_dict:
-        await message.answer_photo(
-            photo=user_dict[message.from_user.id]['photo_id'],
-            caption=caption.as_html())
+    # if message.from_user.id in user_dict:
+    await message.answer_photo(
+        photo=user_dict['photo_id'],
+        caption=caption.as_html())
 
 
 @router.message(Command(commands='calculate'), StateFilter(FSMFillForm.wait_calc))
 async def process_calculate_vdot_command(message: Message, state: FSMContext):
     # получаем данные пользователя
-    user_dict[message.from_user.id] = await state.get_data()
+    user_dict = await state.get_data()
     # my_current_time = datetime.strptime(str(user_dict[message.from_user.id]['result']), '%H:%M:%S')
     #
     # distance = user_dict[message.from_user.id]["res_distances"]
     # считаем VO2Max
-    user_dict[message.from_user.id]['vdot'], user_dict[message.from_user.id]['results'] = (
-        find_vdot(user_dict[message.from_user.id]["res_distances"],
-                  datetime.strptime(str(user_dict[message.from_user.id]['result']), '%H:%M:%S')))
+    user_dict['vdot'], user_dict['results'] = (
+        find_vdot(user_dict["res_distances"],
+                  datetime.strptime(str(user_dict['result']), '%H:%M:%S')))
     # считаем темпы
-    user_dict[message.from_user.id]['count_tempo'] = (
-        count_target_tempo(user_dict[message.from_user.id]['results']['5000 м'],
-                           user_dict[message.from_user.id]['vdot']))
-    await state.update_data(count_tempo=user_dict[message.from_user.id]['count_tempo'],
-                            vdot=user_dict[message.from_user.id]['vdot'])
+    user_dict['count_tempo'] = (
+        count_target_tempo(user_dict['results']['5000 м'],
+                           user_dict['vdot']))
+    await state.update_data(count_tempo=user_dict['count_tempo'],
+                            vdot=user_dict['vdot'])
     # оформляем достижимые результаты
     target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
-                      for k, v in user_dict[message.from_user.id]['results'].items() if k != 'VD0T']
+                      for k, v in user_dict['results'].items() if k != 'VD0T']
     # оформляем темпы для тренировок
-    paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict[message.from_user.id]['count_tempo'].items()]
+    paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
     # оформляем сообщение
     content = formatting.as_list(
         formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
-                           user_dict[message.from_user.id]['results']['VD0T']),
+                           user_dict['results']['VD0T']),
         formatting.as_marked_section(
             formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
             *target_results,
@@ -370,7 +375,7 @@ async def process_calculate_vdot_command(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMFillForm.wait_calc))
 async def warning_showdata_command(message: Message):
     await message.answer(
-        text=(lexicon_ru.LEXICON_RU['wrong_ans'] + ' - ' + message.data)
+        text=(lexicon_ru.LEXICON_RU['wrong_ans'] + ' - ' + message.text)
     )
 
 
@@ -378,24 +383,22 @@ async def warning_showdata_command(message: Message):
 @router.callback_query(StateFilter(FSMFillForm.select_dist), F.data.in_(LEXICON_SELECT_DIST))
 async def process_calculate_plan_command(callback: CallbackQuery, state: FSMContext):
     # сохраняем выбранную дистанцию в хранилище по ключу selected_dist
-    # d = int(callback.data)
     await state.update_data(selected_dist=int(callback.data))
     # получаем данные из хранилища
-    user_dict[callback.from_user.id] = await state.get_data()
-    x = await state.get_data()
+    user_dict = await state.get_data()
     # запускаем расчет плана подготовки передав выбранную дистанцию и рассчитанные ранее темпы
-    user_dict[callback.from_user.id]['plan'] = get_plan(int(callback.data),
-                                                        user_dict[callback.from_user.id]['count_tempo'])
+    user_dict['plan'] = get_plan(int(callback.data),
+                                 user_dict['count_tempo'])
 
     # user_dict[callback.from_user.id]['plan'] = train_plan
     #
-    user_dict[callback.from_user.id]['page'] = len(user_dict[callback.from_user.id]['plan'])
+    user_dict['page'] = len(user_dict['plan'])
     # сохраняем план в хранилище
-    await state.update_data(plan=user_dict[callback.from_user.id]['plan'],
-                            page=user_dict[callback.from_user.id]['page'])
+    await state.update_data(plan=user_dict['plan'],
+                            page=user_dict['page'])
     # формируем сообщение
-    text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
-    page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict[callback.from_user.id]['page'])
+    text = user_dict['plan'][str(user_dict['page'])]
+    page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
     # преобразуем план в текстовый формат для вывода пользователю
     training = [formatting.as_line(i + 1, lexicon_ru.LEXICON_RU['process_calculate_plan_command'][1],
                                    text[i]) for i in range(3)]
@@ -403,7 +406,7 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
     content = formatting.as_list(
         formatting.Underline(
             formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
-                               lexicon_ru.LEXICON_SELECT_DIST[str(user_dict[callback.from_user.id]['selected_dist'])])),
+                               lexicon_ru.LEXICON_SELECT_DIST[str(user_dict['selected_dist'])])),
         formatting.as_marked_section(
             formatting.Bold(page),
             *training,
@@ -414,7 +417,7 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
         'backward',
-        f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
+        f'{user_dict["page"]}/{len(user_dict['plan'])}',
         'forward'))
     await state.set_state(FSMFillForm.wait_sent_file)
 
@@ -424,15 +427,15 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
 @router.callback_query(StateFilter(FSMFillForm.wait_sent_file), F.data == 'forward')
 async def process_forward_press(callback: CallbackQuery, state: FSMContext):
     # получаем данные из хранилища
-    user_dict[callback.from_user.id] = await state.get_data()
-    if user_dict[callback.from_user.id]['page'] > 1:
+    user_dict = await state.get_data()
+    if user_dict['page'] > 1:
         # перелистываем страницу назад
-        user_dict[callback.from_user.id]['page'] -= 1
-        await state.update_data(page=user_dict[callback.from_user.id]['page'])
+        user_dict['page'] -= 1
+        await state.update_data(page=user_dict['page'])
         # получаем текст страницы
-        text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
+        text = user_dict['plan'][str(user_dict['page'])]
         page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
-            user_dict[callback.from_user.id]['page'])
+            user_dict['page'])
         # training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
         training = [formatting.as_key_value(formatting.as_line(i + 1,
                                                                lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
@@ -444,7 +447,7 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
             formatting.Underline(
                 formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
                                    lexicon_ru.LEXICON_SELECT_DIST[
-                                       str(user_dict[callback.from_user.id]['selected_dist'])])),
+                                       str(user_dict['selected_dist'])])),
             formatting.as_marked_section(
                 formatting.Bold(page),
                 *training,
@@ -454,9 +457,9 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
-            f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
+            f'{user_dict["page"]}/{len(user_dict['plan'])}',
             'forward'))
-    print(state)
+
     await callback.answer()
 
 
@@ -465,16 +468,16 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(StateFilter(FSMFillForm.wait_sent_file), F.data == 'backward')
 async def process_backward_press(callback: CallbackQuery, state: FSMContext):
     # получаем данные из хранилища
-    user_dict[callback.from_user.id] = await state.get_data()
+    user_dict = await state.get_data()
     # проверяем долистали ли страницу до конца
-    if user_dict[callback.from_user.id]['page'] < len(user_dict[callback.from_user.id]['plan']):
-        user_dict[callback.from_user.id]['page'] += 1
+    if user_dict['page'] < len(user_dict['plan']):
+        user_dict['page'] += 1
         # обновляем хранилище
-        await state.update_data(page=user_dict[callback.from_user.id]['page'])
+        await state.update_data(page=user_dict['page'])
         # формируем текст сообщения
-        text = user_dict[callback.from_user.id]['plan'][str(user_dict[callback.from_user.id]['page'])]
+        text = user_dict['plan'][str(user_dict['page'])]
         page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
-            user_dict[callback.from_user.id]['page'])
+            user_dict['page'])
         training = [formatting.as_key_value(formatting.as_line(i + 1,
                                                                lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
                                                                    1]),
@@ -484,7 +487,7 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
             formatting.Underline(
                 formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
                                    lexicon_ru.LEXICON_SELECT_DIST[
-                                       str(user_dict[callback.from_user.id]['selected_dist'])])),
+                                       str(user_dict['selected_dist'])])),
             formatting.as_marked_section(
                 formatting.Bold(page),
                 *training,
@@ -494,7 +497,7 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
         )
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
-            f'{user_dict[callback.from_user.id]["page"]}/{len(user_dict[callback.from_user.id]['plan'])}',
+            f'{user_dict["page"]}/{len(user_dict['plan'])}',
             'forward'))
     await callback.answer()
 
@@ -503,26 +506,22 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
 async def process_sent_file(message: Message, state: FSMContext):
     # получаем данные пользователя из хранилища
     # получаем данные из хранилища
-    user_dict[message.from_user.id] = await state.get_data()
+    user_dict = await state.get_data()
     # упаковываем в файл txt
-    filename = sent_plan(LEXICON_SELECT_DIST[str(user_dict[message.from_user.id]['selected_dist'])],
-                         lexicon_ru.LEXICON_RU['Info_text'], user_dict[message.from_user.id]['plan'], message.chat.id)
+    filename = sent_plan(LEXICON_SELECT_DIST[str(user_dict['selected_dist'])],
+                         lexicon_ru.LEXICON_RU['Info_text'], user_dict['plan'], message.chat.id)
     # отправляем
     doc = FSInputFile(filename)
     await message.reply_document(doc)
-    # with open(filename, 'r', encoding='utf-8') as file:
-    #     await message.answer_document(InputFile(filename),
-    #                                   caption=formatting.Bold(LEXICON_SELECT_DIST[str(
-    #                                       user_dict[message.from_user.id]['selected_dist'])]).as_html())
     # удаляем файл
-    os.remove (filename)
+    os.remove(filename)
     await state.clear()
 
 
 @router.message(StateFilter(FSMFillForm.wait_calc))
 async def warning_showdata_command(message: Message, state: FSMContext):
     await message.answer(
-        text=(lexicon_ru.LEXICON_RU['wrong_an'] + ' - ' + message.data)
+        text=(lexicon_ru.LEXICON_RU['wrong_ans'] + ' - ' + message.text)
     )
     await state.clear()
 

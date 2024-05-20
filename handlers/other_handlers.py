@@ -19,8 +19,8 @@ async def process_cancel_command(message: Message):
 
 # Этот хэндлер будет срабатывать на любой текст в состоянии
 # по умолчанию и сообщать, что пользователь не находится в процессе заполнения формы
-@router.message(~StateFilter(default_state))
-async def process_some_command(message: Message):
+@router.message(StateFilter(default_state))
+async def process_some_message(message: Message):
     await message.answer(
         text=LEXICON_RU['message out FSM']
     )
