@@ -400,8 +400,11 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
     text = user_dict['plan'][str(user_dict['page'])]
     page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
     # преобразуем план в текстовый формат для вывода пользователю
-    training = [formatting.as_line(i + 1, lexicon_ru.LEXICON_RU['process_calculate_plan_command'][1],
-                                   text[i]) for i in range(3)]
+    training = [formatting.as_key_value(formatting.as_line(i + 1,
+                                                               lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
+                                                                   1],
+                                                               end='\n------------------------------\n'),
+                                            text[i],) for i in range(3)]
 
     content = formatting.as_list(
         formatting.Underline(
@@ -436,11 +439,11 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
         text = user_dict['plan'][str(user_dict['page'])]
         page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
             user_dict['page'])
-        # training = [formatting.as_line(i + 1, '-я тренировка ', text[i]) for i in range(3)]
+
         training = [formatting.as_key_value(formatting.as_line(i + 1,
                                                                lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
                                                                    1],
-                                                               end='\n------------\n'),
+                                                               end='\n------------------------------\n'),
                                             text[i], ) for i in range(3)]
 
         content = formatting.as_list(
@@ -480,8 +483,9 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
             user_dict['page'])
         training = [formatting.as_key_value(formatting.as_line(i + 1,
                                                                lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
-                                                                   1]),
-                                            text[i]) for i in range(3)]
+                                                                   1],
+                                                               end='\n------------------------------\n'),
+                                            text[i],) for i in range(3)]
 
         content = formatting.as_list(
             formatting.Underline(

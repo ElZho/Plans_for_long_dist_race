@@ -22,10 +22,10 @@ def sent_plan(distance: str, Info_text: str, train_plan: dict, id: int) -> str:
     filename = '../calc_plans/Plan for ' + distance + '_' + str(id) + '.txt'
     with open(filename, 'w', encoding='utf-8') as file:
 
-        file.write('<h1 Plan for ' + distance + '</h2>\n')
+        file.write('*** Plan for ' + distance + '***\n\n')
         file.writelines(Info_text)
-        file.writelines(['\n{} week  to race: \n-------__________\n1-st train: {}.\n'
-                         '2-nd train: {}.\n3-rd train: {}.'.format(k, *v)
+        file.writelines(['\n\n{} week  to race: \n-----------------\n- 1-st train:\n{}.\n\n'
+                         '- 2-nd train:\n{}.\n\n- 3-rd train:\n{}.'.format(k, *v)
                          for k, v in train_plan.items()])
         file.write('\n\nLegenda\n-------\n')
         file.write('8x400 (400 RI) - 8 times for 400 m with rest 400m\n')
