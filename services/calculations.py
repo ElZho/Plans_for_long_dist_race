@@ -8,6 +8,7 @@ def find_vdot(dist, my_time) -> tuple:
     import csv
 
     vdot = '85'
+    level = None
     with open('../guides/vdot.csv', encoding='utf-8') as file:
         rows = list(csv.DictReader(file, delimiter=';'))
 
@@ -29,10 +30,10 @@ def find_vdot(dist, my_time) -> tuple:
                     correct_vdot = round(100 / 3 * (my_time - datetime.strptime(row[dist],
                                                 '%H:%M:%S')).total_seconds() / refer_time.total_seconds(), 0)
                 break
+        if level:
+            vdot = int(rows[level]['VD0T']) - correct_vdot
 
-        vdot = int(rows[level]['VD0T']) - correct_vdot
-
-        return (vdot, rows[level])
+        return vdot, rows[level]
 
 
 def count_target_tempo(time5k, vdot):

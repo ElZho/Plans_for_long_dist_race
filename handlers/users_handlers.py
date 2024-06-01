@@ -9,13 +9,17 @@ from aiogram.utils import formatting
 from datetime import timedelta, datetime
 from re import findall
 
+from services.services import format_plan_details
 from states.states import FSMFillForm
 from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
 from lexicon import lexicon_ru
-from calc_func.calculations import find_vdot, count_target_tempo
-from calc_func.planing import get_plan, sent_plan
+from services.calculations import find_vdot, count_target_tempo
+from services.planing import get_plan, sent_plan
 from filters.filtres import CheckTime
+from database.methods import (add_user, create_profile, create_race_report, create_training_plan, create_plan_details,
+                              make_plan_active, make_week_completed, get_my_plans,
+                              get_my_plan_details, get_next_week_plan)
 
 router = Router()
 
@@ -239,7 +243,6 @@ async def warning_not_distances(message: Message):
 # Этот хэндлер будет срабатывать, если введенs часы
 # и переводить в состояние ввода дистанции
 @router.message(StateFilter(FSMFillForm.fill_res_time), CheckTime())
-                # lambda x: len(findall(r'(\d{2})', x.text)) == 3)
 async def process_res_time_sent(message: Message, state: FSMContext):
     # Превращаем часы, минуты, секунды в время"
     h, m, s = findall(r'(\d{2})', message.text)
@@ -251,7 +254,7 @@ async def process_res_time_sent(message: Message, state: FSMContext):
     await message.answer(
         text=lexicon_ru.LEXICON_RU['time_sent']
     )
-    # Устанавливаем состояние ожидания выбора пола
+    # Устанавливаем состояние ожидания выбора фото
     await state.set_state(FSMFillForm.upload_photo)
 
 
@@ -277,7 +280,7 @@ async def process_photo_sent(message: Message,
         photo_unique_id=largest_photo.file_unique_id,
         photo_id=largest_photo.file_id
     )
-    # user_dict[message.from_user.id] = await state.get_data()
+
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
         text=lexicon_ru.LEXICON_RU['photo_sent']
@@ -310,7 +313,7 @@ async def process_showdata_command(message: Message, state: FSMContext):
     await state.update_data(pulse_zone=pulse_zone, IMT=user_dict["IMT"])
     # готовим сообщение
     pulse = formatting.as_marked_section(
-        formatting.Bold(lexicon_ru.LEXICON_RU['showdata']),
+        formatting.Bold(lexicon_ru.LEXICON_RU['showdata'][0]),
         *pulse_zone,
         marker="🔸 ",
     )
@@ -323,7 +326,9 @@ async def process_showdata_command(message: Message, state: FSMContext):
                                                              for k, v in
                                                              SHOW_DATA['photo_capt'].items()]), sep="\n\n", )),
                                  pulse,
-                                 formatting.BotCommand('/calculate'),
+                                 #formatting.BotCommand('/calculate'),
+                                 lexicon_ru.LEXICON_RU['showdata'][1],
+                                 formatting.BotCommand('/save_data'),
                                  sep="\n\n",
                                  )
     # if message.from_user.id in user_dict:
@@ -332,17 +337,26 @@ async def process_showdata_command(message: Message, state: FSMContext):
         caption=caption.as_html())
 
 
+@router.message(Command(commands='save_data'), StateFilter(FSMFillForm.wait_calc))
+async def process_save_data_command(message: Message, state: FSMContext):
+    user_dict = await state.get_data()
+    add_user(message.from_user.id, user_dict["name"], user_dict['gender'])
+    create_profile(message.from_user.id, user_dict['weight'], user_dict['height'], user_dict['age'],
+                   user_dict['IMT'], user_dict['max_pulse'], user_dict['photo_id'])
+
+    await message.answer(text=lexicon_ru.LEXICON_RU['save_data'])
+
+
 @router.message(Command(commands='calculate'), StateFilter(FSMFillForm.wait_calc))
 async def process_calculate_vdot_command(message: Message, state: FSMContext):
     # получаем данные пользователя
     user_dict = await state.get_data()
-    # my_current_time = datetime.strptime(str(user_dict[message.from_user.id]['result']), '%H:%M:%S')
-    #
-    # distance = user_dict[message.from_user.id]["res_distances"]
+
     # считаем VO2Max
     user_dict['vdot'], user_dict['results'] = (
         find_vdot(user_dict["res_distances"],
                   datetime.strptime(str(user_dict['result']), '%H:%M:%S')))
+
     # считаем темпы
     user_dict['count_tempo'] = (
         count_target_tempo(user_dict['results']['5000 м'],
@@ -367,6 +381,8 @@ async def process_calculate_vdot_command(message: Message, state: FSMContext):
             *paces,
             marker="🔸 ", ),
     )
+    # сохраняем данные о текущих результатах пользователя
+    create_race_report(message.from_user.id, user_dict['res_distances'], user_dict['result'], user_dict['vdot'])
 
     await message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
     await state.set_state(FSMFillForm.select_dist)
@@ -390,33 +406,16 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
     user_dict['plan'] = get_plan(int(callback.data),
                                  user_dict['count_tempo'])
 
-    # user_dict[callback.from_user.id]['plan'] = train_plan
-    #
     user_dict['page'] = len(user_dict['plan'])
     # сохраняем план в хранилище
     await state.update_data(plan=user_dict['plan'],
                             page=user_dict['page'])
     # формируем сообщение
-    text = user_dict['plan'][str(user_dict['page'])]
-    page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
-    # преобразуем план в текстовый формат для вывода пользователю
-    training = [formatting.as_key_value(formatting.as_line(i + 1,
-                                                               lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
-                                                                   1],
-                                                               end='\n------------------------------\n'),
-                                            text[i],) for i in range(3)]
 
-    content = formatting.as_list(
-        formatting.Underline(
-            formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
-                               lexicon_ru.LEXICON_SELECT_DIST[str(user_dict['selected_dist'])])),
-        formatting.as_marked_section(
-            formatting.Bold(page),
-            *training,
-            marker="🔸 ",
-        ),
-        formatting.BotCommand('/get_plan_in_file')
-    )
+    page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
+    content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
+                                  page, ['/get_plan_in_file', '/save_plan'])
+
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
         'backward',
@@ -436,28 +435,11 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
         user_dict['page'] -= 1
         await state.update_data(page=user_dict['page'])
         # получаем текст страницы
-        text = user_dict['plan'][str(user_dict['page'])]
         page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
             user_dict['page'])
+        content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
+                                      page, ['/get_plan_in_file', '/save_plan'])
 
-        training = [formatting.as_key_value(formatting.as_line(i + 1,
-                                                               lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
-                                                                   1],
-                                                               end='\n------------------------------\n'),
-                                            text[i], ) for i in range(3)]
-
-        content = formatting.as_list(
-            formatting.Underline(
-                formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
-                                   lexicon_ru.LEXICON_SELECT_DIST[
-                                       str(user_dict['selected_dist'])])),
-            formatting.as_marked_section(
-                formatting.Bold(page),
-                *training,
-                marker="🔸 ",
-            ),
-            formatting.BotCommand('/get_plan_in_file')
-        )
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
             f'{user_dict["page"]}/{len(user_dict['plan'])}',
@@ -478,32 +460,38 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
         # обновляем хранилище
         await state.update_data(page=user_dict['page'])
         # формируем текст сообщения
-        text = user_dict['plan'][str(user_dict['page'])]
+        # text = user_dict['plan'][str(user_dict['page'])]
         page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
             user_dict['page'])
-        training = [formatting.as_key_value(formatting.as_line(i + 1,
-                                                               lexicon_ru.LEXICON_RU['process_calculate_plan_command'][
-                                                                   1],
-                                                               end='\n------------------------------\n'),
-                                            text[i],) for i in range(3)]
+        content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
+                                      page, ['/get_plan_in_file', '/save_plan'])
 
-        content = formatting.as_list(
-            formatting.Underline(
-                formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
-                                   lexicon_ru.LEXICON_SELECT_DIST[
-                                       str(user_dict['selected_dist'])])),
-            formatting.as_marked_section(
-                formatting.Bold(page),
-                *training,
-                marker="🔸 ",
-            ),
-            formatting.BotCommand('/get_plan_in_file')
-        )
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
             f'{user_dict["page"]}/{len(user_dict['plan'])}',
             'forward'))
     await callback.answer()
+
+
+@router.message(Command(commands='save_plan'), StateFilter(FSMFillForm.wait_sent_file))
+async def process_save_plan(message: Message, state: FSMContext):
+    # получаем данные
+    user_dict = await state.get_data()
+    dt=datetime.now()
+    # создаем ид
+    id = message.from_user.id + round(dt.timestamp())
+    # сохраняем в бд
+    create_training_plan(message.from_user.id, user_dict['selected_dist'], id)
+    # сохраняем детали плана
+    for k, v in user_dict['plan'].items():
+        create_plan_details(message.from_user.id, id, k, v[0], v[1], v[2])
+
+    await message.answer(lexicon_ru.LEXICON_RU['save_plan'])
+
+    await state.clear()
+    t = await state.get_state()
+    print('Состояние', t)
+
 
 
 @router.message(Command(commands='get_plan_in_file'), StateFilter(FSMFillForm.wait_sent_file))

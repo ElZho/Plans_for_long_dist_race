@@ -7,7 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage, Redis
 
 from config_data.config import Config, load_config
-from handlers import other_handlers, users_handlers
+from handlers import other_handlers, users_handlers, authorized_user_handlers
 
 # Инициализируем логгер
 logger = logging.getLogger(__name__)
@@ -36,8 +36,10 @@ async def main():
               default=DefaultBotProperties(parse_mode='HTML')
               )
     dp = Dispatcher(storage=storage)
+    dp['admin_ids'] = config.tg_bot.admin_ids
 
     # Регистриуем роутеры в диспетчере
+    dp.include_router(authorized_user_handlers.router)
     dp.include_router(users_handlers.router)
     dp.include_router(other_handlers.router)
 
