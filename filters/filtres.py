@@ -1,4 +1,5 @@
 from aiogram.filters import BaseFilter
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from re import findall
 
@@ -47,3 +48,24 @@ class CheckRaces(BaseFilter):
             return callback.data in list_of_races
         else:
             return False
+
+
+class CheckProfileData(BaseFilter):
+    """Check data according to states data (age, weight, height)"""
+
+    async def __call__(self, message: Message, state: FSMContext) -> bool:
+        data = await state.get_data()
+        val = message.text
+        res = False
+        if data['key'] == 'age':
+            res = (val.isdigit() and 16 <= int(val) <= 90)
+
+        elif data['key'] == 'weight':
+            res = (val.replace(',', '').replace('.', '').isdigit()
+                   and 35.0 <= float(val.replace(',', '.')) <= 150.0)
+
+        elif data['key'] == 'height':
+            res = (val.replace(',', '').replace('.', '').isdigit()
+                   and 135.0 <= float(val.replace(',', '.')) <= 250.0)
+
+        return res

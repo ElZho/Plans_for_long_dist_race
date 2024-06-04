@@ -9,7 +9,7 @@ from aiogram.utils import formatting
 from datetime import timedelta, datetime
 from re import findall
 
-from services.services import format_plan_details
+from services.services import format_plan_details, calculate_pulse_zones, calculate_imt, calculate_max_pulse
 from states.states import FSMFillForm
 from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
@@ -47,7 +47,7 @@ async def process_start_command(message: Message):
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel_command_state(message: Message, state: FSMContext):
     await message.answer(
-        text=lexicon_ru.LEXICON_RU['cansel in FSM']
+        text=lexicon_ru.LEXICON_RU['cancel in FSM']
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
@@ -110,36 +110,17 @@ async def wrong_age(message: Message):
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки при
-# выборе пола, если выбран мужской пол и переводить в состояние ввода веса
-@router.callback_query(StateFilter(FSMFillForm.fill_gender),
-                       F.data.in_(['Мужской']))
-async def process_gender_press(callback: CallbackQuery, state: FSMContext):
-    # Cохраняем пол (callback.data нажатой кнопки) в хранилище,
-    # по ключу "gender"
-    data = await state.get_data()
-    await state.update_data(gender=callback.data)
-    await state.update_data(max_pulse=round(208. - 0.7 * data['age']))
-    # Удаляем сообщение с кнопками, потому что следующий этап - загрузка фото
-    # чтобы у пользователя не было желания тыкать кнопки
-    # Отправляем пользователю сообщение с клавиатурой
-    await callback.message.delete()
-    await callback.message.answer(
-        text=lexicon_ru.LEXICON_RU['gender_press']
-    )
-    # Устанавливаем состояние ожидания выбора пола
-    await state.set_state(FSMFillForm.fill_weight)
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки при
 # выборе пола, если выбран женский пол и переводить в состояние ввода веса
-@router.callback_query(StateFilter(FSMFillForm.fill_gender),
-                       F.data.in_(['Женский']))
+@router.callback_query(StateFilter(FSMFillForm.fill_gender)) #, F.data.in_(['Женский'])
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
-    # Cохраняем пол (callback.data нажатой кнопки) в хранилище,
-    # по ключу "gender"
+    # Получаем ранее сохраненные данные
     data = await state.get_data()
-    await state.update_data(gender=callback.data)
-    await state.update_data(max_pulse=round(206. - 0.88 * data['age']))
+    # считаем максимальный пульс
+    max_pulse = calculate_max_pulse(callback.data, data['age'])
+    # Cохраняем пол (callback.data нажатой кнопки) в хранилище,
+    # по ключу "gender" и максимальный пульс по ключу max_pulse
+    await state.update_data(gender=callback.data, max_pulse=max_pulse)
+
     # Удаляем сообщение с кнопками, потому что следующий этап - загрузка фото
     # чтобы у пользователя не было желания тыкать кнопки
     # Отправляем пользователю сообщение с клавиатурой
@@ -304,12 +285,10 @@ async def process_showdata_command(message: Message, state: FSMContext):
     # получаем данные пользователя
     user_dict = await state.get_data()
     # считаем пульсовые зоны
-    pulse_zone = [formatting.as_line(k, round(v[0] * user_dict['max_pulse']), '-',
-                                     round(v[1] * user_dict["max_pulse"]), sep=' ')
-                  for k, v in SHOW_DATA['pulse_zone'].items()]
-    # считаем ИМТ
-    user_dict["IMT"] = round(user_dict["weight"] * 1000 /
-                             user_dict["height"] ** 2, 2)
+    pulse_zone = calculate_pulse_zones(user_dict['max_pulse'])
+    # считаем индекс массы тела
+    user_dict["IMT"] = calculate_imt(user_dict["weight"], user_dict["height"])
+    # сохраняем данные
     await state.update_data(pulse_zone=pulse_zone, IMT=user_dict["IMT"])
     # готовим сообщение
     pulse = formatting.as_marked_section(
@@ -326,12 +305,10 @@ async def process_showdata_command(message: Message, state: FSMContext):
                                                              for k, v in
                                                              SHOW_DATA['photo_capt'].items()]), sep="\n\n", )),
                                  pulse,
-                                 #formatting.BotCommand('/calculate'),
                                  lexicon_ru.LEXICON_RU['showdata'][1],
                                  formatting.BotCommand('/save_data'),
                                  sep="\n\n",
                                  )
-    # if message.from_user.id in user_dict:
     await message.answer_photo(
         photo=user_dict['photo_id'],
         caption=caption.as_html())

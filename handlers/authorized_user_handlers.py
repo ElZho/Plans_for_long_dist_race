@@ -1,28 +1,29 @@
 import os
-
-from aiogram import F, Router
-from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.fsm.state import default_state
-from aiogram.fsm.context import FSMContext
-from aiogram.types import (CallbackQuery, Message, PhotoSize, FSInputFile)
-
-from aiogram.utils import formatting
 from datetime import timedelta, datetime, time
 from re import findall
 
-from states.states import FSMFillForm
-from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
-from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
-from lexicon import lexicon_ru
-from services.calculations import find_vdot, count_target_tempo
-from services.planing import get_plan, sent_plan
-from services.services import show_my_plans, get_plan_details, format_plan_details, collect_my_race_report
-from filters.filtres import CheckTime, IsAuthorized, CheckPlans, CheckRaces
+from aiogram import F, Router
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import default_state
+from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize)
+from aiogram.utils import formatting
+
 from database.methods import (get_plan_name, create_race_report, make_plan_active, delete_plan, get_next_week_plan,
-                              make_week_completed)
+                              make_week_completed, get_my_profile, change_profile_data)
+from filters.filtres import CheckTime, IsAuthorized, CheckPlans, CheckRaces, CheckProfileData
+from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
+from lexicon import lexicon_ru
+from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST
+from services.calculations import find_vdot, count_target_tempo
+from services.planing import sent_plan
+from services.services import show_my_plans, get_plan_details, format_plan_details, collect_my_race_report, \
+    calculate_save
+from states.states import FSMFillForm
 
 router = Router()
 router.message.filter(IsAuthorized())
+
 
 # Этот хэндлер будет срабатывать на команду /help вне состояний
 # и рассказывать о возможностях системы и сообщать команды.
@@ -38,7 +39,7 @@ async def process_start_command(message: Message):
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel_command_state(message: Message, state: FSMContext):
     await message.answer(
-        text=lexicon_ru.LEXICON_RU['cansel in FSM']
+        text=lexicon_ru.LEXICON_RU['cancel in FSM']
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
@@ -57,7 +58,6 @@ async def process_get_my_plans(message: Message, state: FSMContext):
 
 @router.callback_query(StateFilter(FSMFillForm.view_saved_plan), CheckPlans())
 async def process_get_my_plans_details(callback: CallbackQuery, state: FSMContext):
-
     # get training and format it
     training = get_plan_details(callback.from_user.id, callback.data)
     plan = get_plan_name(callback.data)
@@ -102,7 +102,6 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
     # получаем данные из хранилища
     data = await state.get_data()
     if data['page'] < data['page_quantity']:
-
         # перелистываем страницу назад
         page = data['page'] + 1
         await state.update_data(page=page)
@@ -142,6 +141,7 @@ async def process_delete_plan(message: Message, state: FSMContext):
     await state.clear()
     print(state.get_data())
 
+
 @router.message(Command(commands='add_new_race_result'), StateFilter(default_state))
 async def process_add_new_result(message: Message, state: FSMContext):
     # get plans from db and pass them to buttons
@@ -171,7 +171,6 @@ async def select_distances(callback: CallbackQuery, state: FSMContext):
     await state.set_state(FSMFillForm.add_new_result_time)
 
 
-
 @router.message(StateFilter(FSMFillForm.add_new_result_time), CheckTime())
 async def process_res_time_sent(message: Message, state: FSMContext):
     # Превращаем часы, минуты, секунды в время"
@@ -185,7 +184,8 @@ async def process_res_time_sent(message: Message, state: FSMContext):
         find_vdot(data["res_distances"],
                   datetime.strptime(str(data['result']), '%H:%M:%S')))
 
-    create_race_report(message.from_user.id, data['res_distances'], time(hour=int(h), minute=int(m), second=int(s)), vdot)
+    create_race_report(message.from_user.id, data['res_distances'], time(hour=int(h), minute=int(m), second=int(s)),
+                       vdot)
 
     # Отправляем пользователю сообщение с клавиатурой
     await message.answer(
@@ -216,9 +216,9 @@ async def process_sent_file(message: Message, state: FSMContext):
         )
         await state.set_state(FSMFillForm.get_saved_plan_in_file)
 
+
 @router.callback_query(StateFilter(FSMFillForm.get_saved_plan_in_file), CheckPlans())
 async def process_get_saved_plan_in_file(callback: CallbackQuery, state: FSMContext):
-
     # get training and format it
     data = get_plan_details(callback.from_user.id, callback.data)
     plan_name = get_plan_name(callback.data)
@@ -236,14 +236,13 @@ async def process_get_saved_plan_in_file(callback: CallbackQuery, state: FSMCont
 
 @router.message(Command(commands='calculate'), StateFilter(default_state))
 async def process_calculate_new_plan(message: Message, state: FSMContext):
-
     await message.answer(lexicon_ru.LEXICON_RU['calculate_new_plan'],
                          reply_markup=create_inline_kb(2, lexicon_ru.LEXICON_YES_NO))
     await state.set_state(FSMFillForm.select_result)
 
 
 # Этот хендлер будет срабатывать на 'yes': 'Внесу новый'
-@router.callback_query(StateFilter(FSMFillForm.select_result),  F.data.in_(['yes']))
+@router.callback_query(StateFilter(FSMFillForm.select_result), F.data.in_(['yes']))
 async def process_add_new_result(callback: CallbackQuery, state: FSMContext):
     # удаляем предыдущее сообщение
     await callback.message.delete()
@@ -266,7 +265,7 @@ async def process_select_result(callback: CallbackQuery, state: FSMContext):
 
     # выводим рейсы
     my_races = collect_my_race_report(callback.from_user.id)
-    await state.update_data(my_races = my_races)
+    await state.update_data(my_races=my_races)
     buttons = dict([(k, '{} - {} за {} VO2max {}'.format(*v)) for k, v in my_races.items()])
     await callback.message.answer(
         text=lexicon_ru.LEXICON_RU['select_result'],
@@ -277,7 +276,7 @@ async def process_select_result(callback: CallbackQuery, state: FSMContext):
     await state.set_state(FSMFillForm.get_new_paces)
 
 
-@router.callback_query(StateFilter(FSMFillForm.get_new_paces), CheckRaces()) # , CheckRaces()
+@router.callback_query(StateFilter(FSMFillForm.get_new_paces), CheckRaces())
 async def process_calculate_paces(callback: CallbackQuery, state: FSMContext):
     # удаляем предыдущее сообщение
     await callback.message.delete()
@@ -290,7 +289,6 @@ async def process_calculate_paces(callback: CallbackQuery, state: FSMContext):
     # считаем VO2Max
     user_dict['vdot'], user_dict['results'] = (find_vdot(result[1],
                                                          datetime.strptime(str(result[2]), '%H:%M:%S')))
-    list_of_races = list(collect_my_race_report(callback.from_user.id).keys())
 
     # считаем темпы
     user_dict['count_tempo'] = (
@@ -322,6 +320,7 @@ async def process_calculate_paces(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
     await state.set_state(FSMFillForm.select_dist)
 
+
 @router.message(Command(commands='get_next_week_plan'), StateFilter(default_state))
 async def process_get_next_week_plan(message: Message, state: FSMContext):
     result = get_next_week_plan(message.from_user.id)
@@ -332,7 +331,7 @@ async def process_get_next_week_plan(message: Message, state: FSMContext):
         await message.answer(lexicon_ru.LEXICON_RU['get_next_week_plan'][1])
     else:
         page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(result.week)
-        weekly_train =[result.first_train, result.second_train, result.third_train]
+        weekly_train = [result.first_train, result.second_train, result.third_train]
         training = [formatting.as_key_value(formatting.as_line(i + 1,
                                                                lexicon_ru.LEXICON_RU[
                                                                    'process_calculate_plan_command'][
@@ -342,11 +341,11 @@ async def process_get_next_week_plan(message: Message, state: FSMContext):
         content = formatting.as_list(
             formatting.Underline(page_text),
             *training,
-        formatting.BotCommand('/make_week_completed')
-        )
-        print('Result', result.completed)
+            formatting.BotCommand('/make_week_completed'))
+
         await message.answer(**content.as_kwargs())
         await state.set_state(FSMFillForm.make_week_completed)
+
 
 @router.message(Command(commands='make_week_completed'), StateFilter(FSMFillForm.make_week_completed))
 async def process_make_week_completed(message: Message, state: FSMContext):
@@ -359,3 +358,108 @@ async def process_make_week_completed(message: Message, state: FSMContext):
         await message.answer(text=lexicon_ru.LEXICON_RU['make_week_completed'][2].format(result))
     await state.clear()
 
+
+@router.message(Command(commands='showmyprofile'))
+async def process_showmyprofile(message: Message):
+    """This handler works on command showprofole and shows users profile:
+    Name, age, weight, height, max pulse, pulse zones and imt"""
+
+    name, profile, _ = get_my_profile(message.from_user.id)
+    data = dict({'age': profile.age, 'height': profile.height, 'weight': profile.weight,
+                 'IMT': profile.imt, 'max_pulse': profile.max_pulse})
+
+    caption = formatting.as_list(formatting.as_section(formatting.Bold(name),
+                                                       formatting.as_list(formatting.as_list(
+                                                           *[formatting.as_key_value(v,
+                                                                                     data[k])
+                                                             for k, v in
+                                                             lexicon_ru.SHOW_DATA['photo_capt'].items()
+                                                             if k not in ["gender", 'res_distances', 'result']]
+
+                                                       ), sep="\n\n", )),
+
+                                 lexicon_ru.LEXICON_RU['showdata'][1],
+                                 formatting.BotCommand('/change_profile'),
+                                 sep="\n\n",
+                                 )
+
+    await message.answer_photo(
+        photo=profile.photo,
+        caption=caption.as_html())
+
+
+@router.message(Command('change_profile'), StateFilter(default_state))
+async def process_change_profile(message: Message, state: FSMContext):
+    # сохраняем в хранилище
+    buttons = dict(filter(lambda item: item[0] in ('age', 'weight', 'height'),
+                          lexicon_ru.SHOW_DATA['photo_capt'].items()))
+    buttons.update({'photo': 'photo'})
+    await state.update_data(buttons=buttons)
+
+    await message.answer(text=lexicon_ru.LEXICON_RU['change_profile'],
+                         reply_markup=create_inline_kb(1, buttons))
+    await state.set_state(FSMFillForm.change_profile)
+
+
+@router.callback_query(StateFilter(FSMFillForm.change_profile), F.data.in_(['age', 'weight', 'height', 'photo']))
+async def process_value_selected(callback: CallbackQuery, state: FSMContext):
+    # сохраняем в хранилище
+    await state.update_data(key=callback.data)
+
+    await callback.message.answer(text=lexicon_ru.LEXICON_RU['wait_data'][0],
+                                  reply_markup=None)
+    await state.set_state(FSMFillForm.wait_data)
+
+
+@router.message(StateFilter(FSMFillForm.wait_data), CheckProfileData())
+async def process_value_sent(message: Message, state: FSMContext):
+    # получаем ключ из хранилища
+    data = await state.get_data()
+    val = float(message.text.replace(',', '.'))
+    buttons = dict([(k, v) for k, v in data['buttons'].items() if k != data['key']])
+    # сохраняем результат в соответствующих ключах
+    if data['key'] == 'age':
+        await state.update_data(age=val, buttons=buttons)
+    elif data['key'] == 'weight':
+        await state.update_data(weight=val, buttons=buttons)
+    elif data['key'] == 'height':
+        await state.update_data(height=val, buttons=buttons)
+    # выводим ответ и клавиатуру для выбора
+    if buttons:
+        await message.answer(text=lexicon_ru.LEXICON_RU['wait_data'][1],
+                             reply_markup=create_inline_kb(1, buttons))
+    else:
+        await message.answer(text=lexicon_ru.LEXICON_RU['wait_data'][2],
+                             reply_markup=None)
+    await state.set_state(FSMFillForm.change_profile)
+
+
+@router.message(StateFilter(FSMFillForm.wait_data), F.photo[-1].as_('largest_photo'))
+async def process_photo_sent(message: Message, state: FSMContext, largest_photo: PhotoSize):
+    # Cохраняем данные фото (file_unique_id и file_id) в хранилище
+    # по ключам "photo_unique_id" и "photo_id"
+    await state.update_data(
+        photo_unique_id=largest_photo.file_unique_id,
+        photo_id=largest_photo.file_id
+    )
+    # получаем ключ из хранилища
+    data = await state.get_data()
+    buttons = dict([(k, v) for k, v in data['buttons'].items() if k != 'photo'])
+    # Отправляем пользователю сообщение с клавиатурой
+    if buttons:
+        await message.answer(text=lexicon_ru.LEXICON_RU['wait_data'][1],
+                             reply_markup=create_inline_kb(1, buttons))
+    else:
+        await message.answer(text=lexicon_ru.LEXICON_RU['wait_data'][2],
+                             reply_markup=None)
+    await state.set_state(FSMFillForm.change_profile)
+
+
+@router.message(Command(commands='count_save'), StateFilter(FSMFillForm.change_profile))
+async def process_get_data(message: Message, state: FSMContext):
+    # получаем ключ из хранилища
+    data = await state.get_data()
+    res = calculate_save(message.from_user.id, **data)
+    await message.answer(text=lexicon_ru.LEXICON_RU['count_save'][res],
+                         reply_markup=None)
+    await state.clear()

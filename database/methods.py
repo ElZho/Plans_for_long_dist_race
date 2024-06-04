@@ -1,7 +1,8 @@
-from sqlalchemy import create_engine
+from typing import Any
+
+from sqlalchemy import create_engine, func, update
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, time
-# import pandas as pd
+from datetime import time, datetime
 
 import logging
 
@@ -40,18 +41,25 @@ def create_profile(tg_id: int, weight: float, height: float, age: float, imt: fl
     Session = sessionmaker(bind=engine)
     session = Session()
     user = session.query(User).filter(User.user_id == tg_id).first()
-    profile = session.query(Profile).filter(Profile.owner == user.user_id).first()
-    if profile is None:
+    profile = session.query(Profile).filter(Profile.owner == user.id).first()
+    last_profile_id = session.query(func.max(Profile.id)).where(Profile.owner == user.id).first()
+    # profile = session.query(Profile).where(Profile.owner == user.user_id).first()
+    if last_profile_id:
+        print('Профиль', last_profile_id, profile.id)
+    else:
+        print('Профиля нет!!!')
+    if last_profile_id is None:
+        print('Что-то пошло не так')
         new_profile = Profile(weight=weight, height=height, age=age, imt=imt, owner=user.id, max_pulse=max_pulse,
                               photo=photo)
         session.add(new_profile)
     else:
-        profile.weight = weight
-        profile.height = height
-        profile.age = age
-        profile.imt = imt
-        profile.max_pulse = max_pulse
-        profile.photo = photo
+        print('Пока все так')
+        session.execute(update(Profile).where(Profile.id == last_profile_id[0]).values(weight=weight, height=height,
+                                                                               age=age, imt=imt,
+                                                                               max_pulse=max_pulse,
+                                                                               photo=photo,
+                                                                               profile_date=datetime.now()))
     session.commit()
 
 
@@ -268,3 +276,46 @@ def get_my_race_reports(tg_id: int) -> tuple[int, int, int, int] | int:
     if reports is None:
         return 1
     return reports
+
+
+def get_my_profile(tg_id: int) -> tuple:
+    """func to get all users plans
+    0 - user not exist
+    1 - there is no one plan
+    """
+
+    engine = create_engine(config.db.db_address, echo=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    user = session.query(User).filter(User.user_id == tg_id).first()
+    if user is None:
+        return 0
+    last_profile_id = session.query(func.max(Profile.id)).where(Profile.owner==user.id).first()
+
+    actual_profile = session.query(Profile).where(Profile.id==last_profile_id[0]).first()
+
+    if actual_profile is None:
+        return 1
+    return user.user_name, actual_profile, user.gender
+
+
+def change_profile_data(tg_id: int, **kwargs) -> bool:
+    """Changes data which takes in input"""
+
+    engine = create_engine(config.db.db_address, echo=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    user = session.query(User).filter(User.user_id == tg_id).first()
+
+    if user is None:
+        return False
+
+    else:
+        last_profile_id = (
+            session.query(func.max(Profile.id)).where(Profile.owner == user.id).one())
+        session.execute(update(Profile).where(Profile.id == last_profile_id[0]).values(kwargs))
+        # session.execute(update(Profile).where(Profile.id==last_profile_id[0]).values(age= val))
+        session.commit()
+        return True

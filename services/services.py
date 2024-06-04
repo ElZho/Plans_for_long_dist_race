@@ -1,6 +1,6 @@
 from aiogram.utils import formatting
 
-from database.methods import get_my_plans, get_my_plan_details, get_my_race_reports
+from database.methods import get_my_plans, get_my_plan_details, get_my_race_reports, get_my_profile, change_profile_data
 from lexicon import lexicon_ru
 
 
@@ -10,10 +10,11 @@ def show_my_plans(user_id) -> dict:
     plans = get_my_plans(user_id)
     buttons_name = dict()
     for plan in plans:
-        buttons_name.update({str(plan.id): '{} - {}\n{}'.format(plan.plan_date.strftime('%d.%m.%y'),
-                                                                lexicon_ru.LEXICON_SELECT_DIST[str(plan.plan_name)],
-                                                                lexicon_ru.PLAN_CONDITIONS[
-                                                                    (plan.active, plan.completed)])
+        buttons_name.update({str(plan.id): '{}\n\n - {}\n\n{}'.format(plan.plan_date.strftime('%d.%m.%y'),
+                                                                      lexicon_ru.LEXICON_SELECT_DIST[
+                                                                          str(plan.plan_name)],
+                                                                      lexicon_ru.PLAN_CONDITIONS[
+                                                                          (plan.active, plan.completed)])
                              })
     return buttons_name
 
@@ -65,7 +66,6 @@ def format_plan_details(weekly_train: list, plan_id: int, page, bot_commands: li
 
 
 def collect_my_race_report(user_id):
-
     reports = get_my_race_reports(user_id)
     if reports:
         my_races = dict()
@@ -76,3 +76,51 @@ def collect_my_race_report(user_id):
     else:
         return None
 
+
+def calculate_pulse_zones(max_pulse: int) -> list:
+    """This func takes max_pulse and calculates pulse_zones"""
+    pulse_zone = [formatting.as_line(k, round(v[0] * max_pulse), '-',
+                                     round(v[1] * max_pulse), sep=' ')
+                  for k, v in lexicon_ru.SHOW_DATA['pulse_zone'].items()]
+    return pulse_zone
+
+
+def calculate_imt(weight: float, height: float) -> float:
+    """Returns imt, takes weight and height"""
+    imt = round(weight * 1000 /
+                             height ** 2, 2)
+    return imt
+
+
+def calculate_max_pulse(gender: str, age: float) -> int:
+    """calculates max_pulse, takes gender and age. Uses
+    Martha Gulati formula for women and  Tanaka's formula"""
+
+    if gender == 'Женский':
+        max_pulse = round(206. - 0.88 * age)
+    else:
+        max_pulse = round(208. - 0.7 * age)
+    return max_pulse
+
+
+def calculate_save(user_id: int, **kwargs) -> bool:
+    """Gets as input profile data: age, weight, height, photo. Calculates
+    imt and max_pulse and save result in profile"""
+    _, profile, gender = get_my_profile(user_id)
+
+    data = dict({'age': profile.age, 'height': profile.height, 'weight': profile.weight,
+                 'imt': profile.imt, 'max_pulse': profile.max_pulse, 'photo': profile.photo})
+    for k, v in kwargs.items():
+        if k == 'age':
+            max_pulse = calculate_max_pulse(gender, v)
+            data.update(age=v, max_pulse=max_pulse)
+        elif k == 'height':
+            imt = calculate_imt(profile.weight, v)
+            data.update(height=v, imt=imt)
+        elif k == 'weight':
+            imt = calculate_imt(v, profile.height)
+            data.update(weight=v, imt=imt)
+        elif k == 'photo_id':
+            data.update(photo = v)
+    res = change_profile_data(user_id, **data)
+    return res
