@@ -1,10 +1,21 @@
 # This modul makes training plans for 10, 21, 42 K
+from services.services import format_time
 def get_plan(ind: int, train_tempos: dict):
     import csv
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, time
+
+    # def format_time(td: timedelta) -> str:
+    #     if td.seconds//3600 == 0:
+    #         pace = time(minute=(td.seconds // 60) % 60, second=(td.seconds - 60 * ((td.seconds // 60) % 60)))
+    #         res = pace.strftime('%M:%S')
+    #     else:
+    #         pace = time(hour= td.seconds//3600, minute=(td.seconds // 60) % 60,
+    #                     second=(td.seconds - 3600*(td.seconds//3600) - 60 * ((td.seconds // 60) % 60)))
+    #         res = pace.strftime('%H:%M:%S')
+    #     return res
 
     f_names = ['plan10K.csv', 'HMP.csv', '1-st_MP.csv', 'MP.csv']
-    # select_d = ['10000 м', 'Полумарафон', 'Марафон']
+
     plan = dict()
     for k, val in train_tempos.items():
         exec(k + '= val')
@@ -12,7 +23,7 @@ def get_plan(ind: int, train_tempos: dict):
     with open('../guides/' + f_names[ind], encoding='utf-8') as file:
         rows = list(csv.DictReader(file, delimiter=';'))
         for row in rows:
-            plan.update({row['week']:[eval(row['key run #1']), eval(row['key run #2']), eval(row['key run #3'])]})
+            plan.update({row['week']: [eval(row['key run #1']), eval(row['key run #2']), eval(row['key run #3'])]})
 
     return plan
 

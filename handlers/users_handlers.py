@@ -36,7 +36,7 @@ async def process_start_command(message: Message):
 # Этот хэндлер будет срабатывать на команду /help вне состояний
 # и рассказывать о возможностях системы и сообщать команды.
 @router.message(Command(commands='help'))
-async def process_start_command(message: Message):
+async def process_help_command(message: Message):
     await message.answer(
         text=lexicon_ru.LEXICON_RU['help']
     )
@@ -333,36 +333,39 @@ async def process_calculate_vdot_command(message: Message, state: FSMContext):
     user_dict['vdot'], user_dict['results'] = (
         find_vdot(user_dict["res_distances"],
                   datetime.strptime(str(user_dict['result']), '%H:%M:%S')))
+    if int(user_dict['vdot']) < 65:
+        # считаем темпы
+        user_dict['count_tempo'] = (
+            count_target_tempo(user_dict['results']['5000 м'],
+                               user_dict['vdot']))
+        await state.update_data(count_tempo=user_dict['count_tempo'],
+                                vdot=user_dict['vdot'])
+        # оформляем достижимые результаты
+        target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
+                          for k, v in user_dict['results'].items() if k != 'VD0T']
+        # оформляем темпы для тренировок
+        paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
+        # оформляем сообщение
+        content = formatting.as_list(
+            formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
+                               user_dict['results']['VD0T']),
+            formatting.as_marked_section(
+                formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
+                *target_results,
+                marker="🔸 ", ),
+            formatting.as_marked_section(
+                formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
+                *paces,
+                marker="🔸 ", ),
+        )
+        # сохраняем данные о текущих результатах пользователя
+        create_race_report(message.from_user.id, user_dict['res_distances'], user_dict['result'], user_dict['vdot'])
 
-    # считаем темпы
-    user_dict['count_tempo'] = (
-        count_target_tempo(user_dict['results']['5000 м'],
-                           user_dict['vdot']))
-    await state.update_data(count_tempo=user_dict['count_tempo'],
-                            vdot=user_dict['vdot'])
-    # оформляем достижимые результаты
-    target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
-                      for k, v in user_dict['results'].items() if k != 'VD0T']
-    # оформляем темпы для тренировок
-    paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
-    # оформляем сообщение
-    content = formatting.as_list(
-        formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
-                           user_dict['results']['VD0T']),
-        formatting.as_marked_section(
-            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
-            *target_results,
-            marker="🔸 ", ),
-        formatting.as_marked_section(
-            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
-            *paces,
-            marker="🔸 ", ),
-    )
-    # сохраняем данные о текущих результатах пользователя
-    create_race_report(message.from_user.id, user_dict['res_distances'], user_dict['result'], user_dict['vdot'])
-
-    await message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
-    await state.set_state(FSMFillForm.select_dist)
+        await message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
+        await state.set_state(FSMFillForm.select_dist)
+    else:
+        await message.answer(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][3].format(user_dict['vdot']))
+        await state.clear()
 
 
 @router.message(StateFilter(FSMFillForm.wait_calc))
@@ -456,7 +459,7 @@ async def process_save_plan(message: Message, state: FSMContext):
     user_dict = await state.get_data()
     dt=datetime.now()
     # создаем ид
-    id = message.from_user.id + round(dt.timestamp())
+    id = message.from_user.id + dt.timestamp()
     # сохраняем в бд
     create_training_plan(message.from_user.id, user_dict['selected_dist'], id)
     # сохраняем детали плана

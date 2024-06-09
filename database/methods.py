@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import create_engine, func, update
+from sqlalchemy import create_engine, func, update, select, insert, text
 from sqlalchemy.orm import sessionmaker
 from datetime import time, datetime
 
@@ -30,36 +30,29 @@ def add_user(tg_id: int, user_name: str, gender: str):
     if user is None:
         new_user = User(user_id=tg_id, user_name=user_name, gender=gender)
         session.add(new_user)
-        session.commit()
+    session.commit()
 
 
 def create_profile(tg_id: int, weight: float, height: float, age: float, imt: float, max_pulse: int, photo: str):
     """Add new profile for user"""
-    # func to write game report into database
+
     engine = create_engine(config.db.db_address, echo=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
     user = session.query(User).filter(User.user_id == tg_id).first()
-    profile = session.query(Profile).filter(Profile.owner == user.id).first()
-    last_profile_id = session.query(func.max(Profile.id)).where(Profile.owner == user.id).first()
-    # profile = session.query(Profile).where(Profile.owner == user.user_id).first()
-    if last_profile_id:
-        print('Профиль', last_profile_id, profile.id)
+    profile = session.execute(select(Profile). \
+                              where(Profile.owner == user.id).order_by(Profile.id.desc()).limit(1)).first()
+
+    if profile is None:
+        session.execute(insert(Profile).values(weight=weight, height=height, age=age, imt=imt, owner=user.id,
+                                               max_pulse=max_pulse, photo=photo))
     else:
-        print('Профиля нет!!!')
-    if last_profile_id is None:
-        print('Что-то пошло не так')
-        new_profile = Profile(weight=weight, height=height, age=age, imt=imt, owner=user.id, max_pulse=max_pulse,
-                              photo=photo)
-        session.add(new_profile)
-    else:
-        print('Пока все так')
-        session.execute(update(Profile).where(Profile.id == last_profile_id[0]).values(weight=weight, height=height,
-                                                                               age=age, imt=imt,
-                                                                               max_pulse=max_pulse,
-                                                                               photo=photo,
-                                                                               profile_date=datetime.now()))
+        session.execute(update(Profile).where(Profile.id == profile[0].id).values(weight=weight, height=height,
+                                                                                  age=age, imt=imt,
+                                                                                  max_pulse=max_pulse,
+                                                                                  photo=photo,
+                                                                                  profile_date=datetime.now()))
     session.commit()
 
 
@@ -128,13 +121,13 @@ def make_plan_active(tg_id, plan_id):
     Session = sessionmaker(bind=engine)
     session = Session()
     user = session.query(User).filter(User.user_id == tg_id).first()
-    plans = session.query(TrainingPlan).filter(TrainingPlan.owner==user.id, TrainingPlan.completed==False)
+    plans = session.query(TrainingPlan).filter(TrainingPlan.owner == user.id, TrainingPlan.completed == False)
     result = 0
     for p in plans:
         if p.active == True:
             return result
-    plan = session.query(TrainingPlan).filter(TrainingPlan.id == plan_id, TrainingPlan.owner==user.id,
-                                              TrainingPlan.completed==False).first()
+    plan = session.query(TrainingPlan).filter(TrainingPlan.id == plan_id, TrainingPlan.owner == user.id,
+                                              TrainingPlan.completed == False).first()
     if plan:
         plan.active = True
         result = 1
@@ -149,37 +142,34 @@ def delete_plan(tg_id, plan_id):
     Session = sessionmaker(bind=engine)
     session = Session()
     user = session.query(User).filter(User.user_id == tg_id).first()
-    if session.query(TrainingPlan).filter(TrainingPlan.id==plan_id, TrainingPlan.owner==user.id):
-        i = session.query(TrainingPlan).filter(TrainingPlan.id==plan_id).one()
+    if session.query(TrainingPlan).filter(TrainingPlan.id == plan_id, TrainingPlan.owner == user.id):
+        i = session.query(TrainingPlan).filter(TrainingPlan.id == plan_id).one()
         session.delete(i)
 
-    plan_details=session.query(PlanDetails).filter(PlanDetails.plan_id==plan_id, PlanDetails.owner==user.id)
+    plan_details = session.query(PlanDetails).filter(PlanDetails.plan_id == plan_id, PlanDetails.owner == user.id)
     for detail in plan_details:
         session.delete(detail)
     session.commit()
 
 
-def make_week_completed(tg_id):
+def make_week_completed(tg_id, plan_id, week):
     """Change the value of the field 'completed' on True """
     engine = create_engine(config.db.db_address, echo=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
-    user = session.query(User).filter(User.user_id==tg_id).first()
-    plan = session.query(TrainingPlan).filter(TrainingPlan.owner==user.id,
-                                              TrainingPlan.active==True).first()
-    week = session.query(PlanDetails).filter(PlanDetails.owner==user.id,
-                                             PlanDetails.plan_id==plan.id,
-                                             PlanDetails.completed==False).first()
+    user = session.query(User).filter(User.user_id == tg_id).first()
+
+    session.execute(update(PlanDetails).where(PlanDetails.owner == user.id, PlanDetails.plan_id == plan_id,
+                                              PlanDetails.week == week).values(completed=True))
+
     result = 0
-    if week:
-        week.completed = True
-        result = week.week
-    if not session.query(PlanDetails).filter(PlanDetails.owner==user.id,
-                                             PlanDetails.plan_id==plan.id,
-                                             PlanDetails.completed==False).first():
-        plan.completed = True
-        plan.active = False
+
+    if not session.query(PlanDetails).filter(PlanDetails.owner == user.id,
+                                             PlanDetails.plan_id == plan_id,
+                                             PlanDetails.completed == False).order_by(PlanDetails.week.desc()).limit(1):
+        session.execute(update(TrainingPlan).where(TrainingPlan.id == plan_id).values(completed=True, active=False))
+
         result = 1
     session.commit()
 
@@ -228,7 +218,7 @@ def get_my_plan_details(tg_id: int, plan_id: int) -> tuple[int, int, int, int] |
     if user is None:
         return 0
 
-    details = session.query(PlanDetails).filter( PlanDetails.owner == user.id, PlanDetails.plan_id == plan_id)
+    details = session.query(PlanDetails).filter(PlanDetails.owner == user.id, PlanDetails.plan_id == plan_id)
 
     if details is None:
         return 1
@@ -251,11 +241,11 @@ def get_next_week_plan(tg_id: int) -> int | list:
 
     if plan is None:
         return 0
-    detail = session.query(PlanDetails).filter(PlanDetails.owner == user.id, PlanDetails.plan_id == plan.id,
-                                                PlanDetails.completed == False).first()
+    detail = session.query(PlanDetails).where(PlanDetails.owner == user.id,
+                                              PlanDetails.plan_id == plan.id,
+                                              PlanDetails.completed == False).order_by(PlanDetails.week.desc()).limit(1)
     if detail is None:
         return 1
-
     return detail
 
 
@@ -291,9 +281,9 @@ def get_my_profile(tg_id: int) -> tuple:
     user = session.query(User).filter(User.user_id == tg_id).first()
     if user is None:
         return 0
-    last_profile_id = session.query(func.max(Profile.id)).where(Profile.owner==user.id).first()
+    last_profile_id = session.query(func.max(Profile.id)).where(Profile.owner == user.id).first()
 
-    actual_profile = session.query(Profile).where(Profile.id==last_profile_id[0]).first()
+    actual_profile = session.query(Profile).where(Profile.id == last_profile_id[0]).first()
 
     if actual_profile is None:
         return 1
@@ -316,6 +306,22 @@ def change_profile_data(tg_id: int, **kwargs) -> bool:
         last_profile_id = (
             session.query(func.max(Profile.id)).where(Profile.owner == user.id).one())
         session.execute(update(Profile).where(Profile.id == last_profile_id[0]).values(kwargs))
-        # session.execute(update(Profile).where(Profile.id==last_profile_id[0]).values(age= val))
+
         session.commit()
         return True
+
+
+def get_users_profile():
+    engine = create_engine(config.db.db_address, echo=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    users_info = session.execute(select(User.user_name, User.gender, Profile.age,
+                                        func.count(TrainingPlan.id).label("tp_quant")
+                                        ).join_from(User, Profile, isouter=True).join(TrainingPlan,
+                                                                                      isouter=True).group_by(User.id,
+                                                                                                             User.user_name,
+                                                                                                             User.gender,
+                                                                                                             Profile.age))
+    return users_info

@@ -1,3 +1,5 @@
+from datetime import time, timedelta
+
 from aiogram.utils import formatting
 
 from database.methods import get_my_plans, get_my_plan_details, get_my_race_reports, get_my_profile, change_profile_data
@@ -10,12 +12,12 @@ def show_my_plans(user_id) -> dict:
     plans = get_my_plans(user_id)
     buttons_name = dict()
     for plan in plans:
-        buttons_name.update({str(plan.id): '{}\n\n - {}\n\n{}'.format(plan.plan_date.strftime('%d.%m.%y'),
-                                                                      lexicon_ru.LEXICON_SELECT_DIST[
+        buttons_name.update({str(plan.id): '{}\n\n-{}\n\n{}'.format(lexicon_ru.LEXICON_SELECT_DIST[
                                                                           str(plan.plan_name)],
                                                                       lexicon_ru.PLAN_CONDITIONS[
-                                                                          (plan.active, plan.completed)])
-                             })
+                                                                          (plan.active, plan.completed)],
+                                                                      plan.plan_date.strftime('%d.%m.%y')
+                                                                      )})
     return buttons_name
 
 
@@ -45,10 +47,10 @@ def format_plan_details(weekly_train: list, plan_id: int, page, bot_commands: li
     """Extract users plan details"""
     bot_command = [formatting.BotCommand(bc) for bc in bot_commands]
     page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(page)
-    training = [formatting.as_key_value(formatting.as_line(i + 1,
+    training = [formatting.as_key_value(formatting.as_line(
                                                            lexicon_ru.LEXICON_RU[
                                                                'process_calculate_plan_command'][
-                                                               1],
+                                                               1].format(i + 1),
                                                            end='\n------------------------------\n'),
                                         weekly_train[i], ) for i in range(3)]
     content = formatting.as_list(
@@ -58,7 +60,7 @@ def format_plan_details(weekly_train: list, plan_id: int, page, bot_commands: li
         formatting.as_marked_section(
             formatting.Bold(page_text),
             *training,
-            marker="🔸 ",
+            marker="\n🔸 ",
         ), *bot_command
         # formatting.BotCommand(bot_command)
     )
@@ -124,3 +126,23 @@ def calculate_save(user_id: int, **kwargs) -> bool:
             data.update(photo = v)
     res = change_profile_data(user_id, **data)
     return res
+
+
+def format_time(td: timedelta) -> str:
+    if td.seconds//3600 == 0:
+        pace = time(minute=(td.seconds // 60) % 60, second=(td.seconds - 60 * ((td.seconds // 60) % 60)))
+        res = pace.strftime('%M:%S')
+    else:
+        pace = time(hour= td.seconds//3600, minute=(td.seconds // 60) % 60,
+                    second=(td.seconds - 3600*(td.seconds//3600) - 60 * ((td.seconds // 60) % 60)))
+        res = pace.strftime('%H:%M:%S')
+    return res
+
+
+def count_race_plan(dist: int|float, plan_time: timedelta) -> list:
+
+    pace = plan_time/dist
+    plan = [format_time(i * pace) for i in range(1, int(dist) + 1)]
+    if isinstance(dist, float) and (dist - int(dist)) > 0:
+        plan.append(plan_time)
+    return plan

@@ -27,3 +27,5 @@ class FSMFillForm(StatesGroup):
     make_week_completed = State()  # отметить план на неделю выполненным
     change_profile = State()  # состояние выбора параметров, которые нужно изменить в профиле
     wait_data = State()  #
+    get_race_dist = State() # ожидание ввода дистанции для расчета плана на гонку
+    get_race_time = State() # ожидание ввода планируемого времени пробега

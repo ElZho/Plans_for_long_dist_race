@@ -82,7 +82,7 @@ class PlanDetails(Base):
     __tablename__ = 'PlanDetails'
     id = Column(Integer, primary_key=True)
     owner = Column(Integer, ForeignKey('Users.id'), nullable=False)
-    plan_id = Column(Integer, ForeignKey('TrainingPlan.id'), nullable=False)
+    plan_id = Column(BigInteger, ForeignKey('TrainingPlan.id'), nullable=False)
     week = Column(Integer, nullable=False)
     first_train = Column(String, nullable=False)
     second_train = Column(String, nullable=False)

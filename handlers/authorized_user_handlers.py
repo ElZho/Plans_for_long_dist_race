@@ -11,14 +11,14 @@ from aiogram.utils import formatting
 
 from database.methods import (get_plan_name, create_race_report, make_plan_active, delete_plan, get_next_week_plan,
                               make_week_completed, get_my_profile, change_profile_data)
-from filters.filtres import CheckTime, IsAuthorized, CheckPlans, CheckRaces, CheckProfileData
+from filters.filtres import CheckTime, IsAuthorized, CheckPlans, CheckRaces, CheckProfileData, CheckDist
 from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon import lexicon_ru
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST
 from services.calculations import find_vdot, count_target_tempo
 from services.planing import sent_plan
 from services.services import show_my_plans, get_plan_details, format_plan_details, collect_my_race_report, \
-    calculate_save
+    calculate_save, count_race_plan
 from states.states import FSMFillForm
 
 router = Router()
@@ -28,7 +28,7 @@ router.message.filter(IsAuthorized())
 # Этот хэндлер будет срабатывать на команду /help вне состояний
 # и рассказывать о возможностях системы и сообщать команды.
 @router.message(Command(commands='help'))
-async def process_start_command(message: Message):
+async def process_help_command(message: Message):
     await message.answer(
         text=lexicon_ru.LEXICON_RU['help_for_authorized_user']
     )
@@ -38,6 +38,7 @@ async def process_start_command(message: Message):
 # не равным по умолчанию и сообщать, что эта команда работает внутри машины состояний
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel_command_state(message: Message, state: FSMContext):
+
     await message.answer(
         text=lexicon_ru.LEXICON_RU['cancel in FSM']
     )
@@ -51,7 +52,7 @@ async def process_get_my_plans(message: Message, state: FSMContext):
     buttons_name = show_my_plans(message.from_user.id)
 
     await message.answer(
-        text=lexicon_ru.LEXICON_RU['get_my_plans'], reply_markup=create_inline_kb(2, buttons_name)
+        text=lexicon_ru.LEXICON_RU['get_my_plans'], reply_markup=create_inline_kb(1, buttons_name)
     )
     await state.set_state(FSMFillForm.view_saved_plan)
 
@@ -121,12 +122,12 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
 async def process_make_plan_active(message: Message, state: FSMContext):
     data = await state.get_data()
     result = make_plan_active(message.from_user.id, int(data['plan_id']))
-
+    await message.edit_reply_markup(reply_markup=None)
     if result == 0:
-        await message.answer(text=lexicon_ru.LEXICON_RU['make_plan_active'][0], reply_markup=None)
+        await message.answer(text=lexicon_ru.LEXICON_RU['make_plan_active'][0])
     else:
         plan = lexicon_ru.LEXICON_SELECT_DIST[str(data['plan'])]
-        await message.answer(text=lexicon_ru.LEXICON_RU['make_plan_active'][1].format(plan), reply_markup=None)
+        await message.answer(text=lexicon_ru.LEXICON_RU['make_plan_active'][1].format(plan))
 
     await state.clear()
 
@@ -136,10 +137,10 @@ async def process_delete_plan(message: Message, state: FSMContext):
     data = await state.get_data()
     delete_plan(message.from_user.id, int(data['plan_id']))
     plan = lexicon_ru.LEXICON_SELECT_DIST[str(data['plan'])]
-
-    await message.answer(text=lexicon_ru.LEXICON_RU['delete_plan'].format(plan), reply_markup=None)
+    await message.edit_reply_markup(reply_markup=None)
+    await message.answer(text=lexicon_ru.LEXICON_RU['delete_plan'].format(plan))
     await state.clear()
-    print(state.get_data())
+
 
 
 @router.message(Command(commands='add_new_race_result'), StateFilter(default_state))
@@ -191,7 +192,6 @@ async def process_res_time_sent(message: Message, state: FSMContext):
     await message.answer(
         text=lexicon_ru.LEXICON_RU['new_time_sent']
     )
-
     await state.clear()
 
 
@@ -289,59 +289,66 @@ async def process_calculate_paces(callback: CallbackQuery, state: FSMContext):
     # считаем VO2Max
     user_dict['vdot'], user_dict['results'] = (find_vdot(result[1],
                                                          datetime.strptime(str(result[2]), '%H:%M:%S')))
+    if int(user_dict['vdot']) < 65:
+        # считаем темпы
+        user_dict['count_tempo'] = (
+            count_target_tempo(user_dict['results']['5000 м'],
+                               user_dict['vdot']))
+        await state.update_data(count_tempo=user_dict['count_tempo'],
+                                vdot=user_dict['vdot'])
+        # оформляем достижимые результаты
+        target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
+                          for k, v in user_dict['results'].items() if k != 'VD0T']
+        # оформляем темпы для тренировок
+        paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
+        # оформляем сообщение
+        content = formatting.as_list(
+            formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
+                               user_dict['results']['VD0T']),
+            formatting.as_marked_section(
+                formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
+                *target_results,
+                marker="🔸 ", ),
+            formatting.as_marked_section(
+                formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
+                *paces,
+                marker="🔸 ", ),
+        )
 
-    # считаем темпы
-    user_dict['count_tempo'] = (
-        count_target_tempo(user_dict['results']['5000 м'],
-                           user_dict['vdot']))
-    await state.update_data(count_tempo=user_dict['count_tempo'],
-                            vdot=user_dict['vdot'])
-    # оформляем достижимые результаты
-    target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
-                      for k, v in user_dict['results'].items() if k != 'VD0T']
-    # оформляем темпы для тренировок
-    paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
-    # оформляем сообщение
-    content = formatting.as_list(
-        formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
-                           user_dict['results']['VD0T']),
-        formatting.as_marked_section(
-            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
-            *target_results,
-            marker="🔸 ", ),
-        formatting.as_marked_section(
-            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
-            *paces,
-            marker="🔸 ", ),
-    )
-    # # сохраняем данные о текущих результатах пользователя
-    # create_race_report(callback.from_user.id, user_dict['res_distances'], user_dict['result'], user_dict['vdot'])
+        await callback.message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
+        await state.set_state(FSMFillForm.select_dist)
+    else:
+        await callback.message.answer(
+            lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][3].format(user_dict['vdot']))
+        await state.clear()
 
-    await callback.message.answer(**content.as_kwargs(), reply_markup=create_inline_kb(2, LEXICON_SELECT_DIST))
-    await state.set_state(FSMFillForm.select_dist)
 
 
 @router.message(Command(commands='get_next_week_plan'), StateFilter(default_state))
 async def process_get_next_week_plan(message: Message, state: FSMContext):
     result = get_next_week_plan(message.from_user.id)
-    # print('Result', result)
+
+    await state.update_data(week=result[0].week, plan_id=result[0].plan_id)
     if result == 0:
         await message.answer(lexicon_ru.LEXICON_RU['get_next_week_plan'][0])
     if result == 1:
         await message.answer(lexicon_ru.LEXICON_RU['get_next_week_plan'][1])
     else:
-        page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(result.week)
-        weekly_train = [result.first_train, result.second_train, result.third_train]
-        training = [formatting.as_key_value(formatting.as_line(i + 1,
+        page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(result[0].week)
+        weekly_train = [result[0].first_train, result[0].second_train, result[0].third_train]
+        training = [formatting.as_key_value(formatting.as_line(
                                                                lexicon_ru.LEXICON_RU[
                                                                    'process_calculate_plan_command'][
-                                                                   1],
+                                                                   1].format(i + 1),
                                                                end='\n------------------------------\n'),
                                             weekly_train[i], ) for i in range(3)]
         content = formatting.as_list(
             formatting.Underline(page_text),
             *training,
-            formatting.BotCommand('/make_week_completed'))
+            formatting.BotCommand('/make_week_completed')
+            ,
+            formatting.BotCommand('/cancel')
+        )
 
         await message.answer(**content.as_kwargs())
         await state.set_state(FSMFillForm.make_week_completed)
@@ -349,13 +356,9 @@ async def process_get_next_week_plan(message: Message, state: FSMContext):
 
 @router.message(Command(commands='make_week_completed'), StateFilter(FSMFillForm.make_week_completed))
 async def process_make_week_completed(message: Message, state: FSMContext):
-    result = make_week_completed(message.from_user.id)
-    if result == 0:
-        await message.answer(text=lexicon_ru.LEXICON_RU['make_week_completed'][0])
-    elif result == 1:
-        await message.answer(text=lexicon_ru.LEXICON_RU['make_week_completed'][1])
-    else:
-        await message.answer(text=lexicon_ru.LEXICON_RU['make_week_completed'][2].format(result))
+    data = await state.get_data()
+    result = make_week_completed(message.from_user.id, data['plan_id'], data['week'])
+    await message.answer(text=lexicon_ru.LEXICON_RU['make_week_completed'][result].format(data['week']))
     await state.clear()
 
 
@@ -462,4 +465,39 @@ async def process_get_data(message: Message, state: FSMContext):
     res = calculate_save(message.from_user.id, **data)
     await message.answer(text=lexicon_ru.LEXICON_RU['count_save'][res],
                          reply_markup=None)
+    await state.clear()
+
+
+@router.message(Command(commands='plan_my_race'), StateFilter(default_state))
+async def process_plan_my_race(message: Message, state: FSMContext):
+
+    await message.answer(text=lexicon_ru.LEXICON_RU['plan_my_race'][0])
+    await state.set_state(FSMFillForm.get_race_dist)
+
+
+@router.message(StateFilter(FSMFillForm.get_race_dist), CheckDist())
+async def process_get_dist(message: Message, state: FSMContext):
+    await state.update_data(dict=float(message.text.replace(',', '.')))
+    if ',' in message.text or '.' in message.text:
+        k, m = message.text.split(',') if ',' in message.text else message.text.split('.')
+    else:
+        k, m = int(message.text), 0
+    await message.answer(text=lexicon_ru.LEXICON_RU['plan_my_race'][1].format(k, m))
+    await state.set_state(FSMFillForm.get_race_time)
+
+
+@router.message(StateFilter(FSMFillForm.get_race_time), CheckTime())
+async def process_get_race_time(message: Message, state: FSMContext):
+    h, m, s = findall(r'(\d{2})', message.text)
+    race_time = timedelta(hours=int(h), minutes=int(m), seconds=int(s))
+    dist = await state.get_data()
+    plan = count_race_plan(dist['dict'], race_time)
+    k = str(int(dist['dict']))
+    m = str(round(1000 * (dist['dict'] - int(dist['dict'])), 2))
+
+    content = formatting.as_marked_section(
+        formatting.Bold(lexicon_ru.LEXICON_RU['plan_my_race'][2].format(k, m)),
+        *plan, marker="\n🔸 ",
+    )
+    await message.answer(**content.as_kwargs())
     await state.clear()

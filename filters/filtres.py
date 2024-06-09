@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
@@ -29,7 +31,8 @@ class IsAdmin(BaseFilter):
 
     # Использую имя ключа в сигнатуре метода для проверки принадлежности к администратору
     async def __call__(self, message: Message, admin_ids: list[int]) -> bool:
-        return message.from_user.id in admin_ids
+
+        return message.from_user.id == int(admin_ids)
 
 
 class CheckPlans(BaseFilter):
@@ -69,3 +72,9 @@ class CheckProfileData(BaseFilter):
                    and 135.0 <= float(val.replace(',', '.')) <= 250.0)
 
         return res
+
+
+class CheckDist(BaseFilter):
+    async def __call__(self, message: Message) -> bool:
+
+        return message.text.replace(',', '').replace('.', '').isdigit()
