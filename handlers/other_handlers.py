@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -8,6 +10,7 @@ from lexicon.lexicon_ru import LEXICON_RU
 from states.states import FSMFillForm
 
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 # Этот хэндлер будет срабатывать на команду "/cancel" в состоянии
@@ -15,7 +18,7 @@ router = Router()
 @router.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
     await message.answer(
-        text=LEXICON_RU['cansel out FSM']
+        text=LEXICON_RU['cancel out FSM']
     )
 
 
@@ -29,11 +32,10 @@ async def process_some_message(message: Message):
 
 
 # удалить в конце
-@router.message()
-async def process_echo_message(message: Message, state: FSMContext):
-    text = message.text
-    st = await state.get_state()
-    await message.answer(
-        text=text
-    )
-    print('State', st)
+# @router.message()
+# async def process_echo_message(message: Message, state: FSMContext):
+#     text = message.text
+#     st = await state.get_state()
+#     await message.answer(
+#         text=text
+#     )

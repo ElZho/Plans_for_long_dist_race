@@ -1,9 +1,13 @@
+import logging
 from datetime import time, timedelta
 
 from aiogram.utils import formatting
 
 from database.methods import get_my_plans, get_my_plan_details, get_my_race_reports, get_my_profile, change_profile_data
 from lexicon import lexicon_ru
+from services.calculations import count_target_tempo
+
+logger = logging.getLogger(__name__)
 
 
 def show_my_plans(user_id) -> dict:
@@ -13,11 +17,11 @@ def show_my_plans(user_id) -> dict:
     buttons_name = dict()
     for plan in plans:
         buttons_name.update({str(plan.id): '{}\n\n-{}\n\n{}'.format(lexicon_ru.LEXICON_SELECT_DIST[
-                                                                          str(plan.plan_name)],
-                                                                      lexicon_ru.PLAN_CONDITIONS[
-                                                                          (plan.active, plan.completed)],
-                                                                      plan.plan_date.strftime('%d.%m.%y')
-                                                                      )})
+                                                                        str(plan.plan_name)],
+                                                                    lexicon_ru.PLAN_CONDITIONS[
+                                                                        (plan.active, plan.completed)],
+                                                                    plan.plan_date.strftime('%d.%m.%y')
+                                                                    )})
     return buttons_name
 
 
@@ -48,11 +52,11 @@ def format_plan_details(weekly_train: list, plan_id: int, page, bot_commands: li
     bot_command = [formatting.BotCommand(bc) for bc in bot_commands]
     page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(page)
     training = [formatting.as_key_value(formatting.as_line(
-                                                           lexicon_ru.LEXICON_RU[
-                                                               'process_calculate_plan_command'][
-                                                               1].format(i + 1),
-                                                           end='\n------------------------------\n'),
-                                        weekly_train[i], ) for i in range(3)]
+        lexicon_ru.LEXICON_RU[
+            'process_calculate_plan_command'][
+            1].format(i + 1),
+        end='\n------------------------------\n'),
+        weekly_train[i], ) for i in range(3)]
     content = formatting.as_list(
         formatting.Underline(
             formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_plan_command'][2],
@@ -90,7 +94,7 @@ def calculate_pulse_zones(max_pulse: int) -> list:
 def calculate_imt(weight: float, height: float) -> float:
     """Returns imt, takes weight and height"""
     imt = round(weight * 1000 /
-                             height ** 2, 2)
+                height ** 2, 2)
     return imt
 
 
@@ -123,26 +127,53 @@ def calculate_save(user_id: int, **kwargs) -> bool:
             imt = calculate_imt(v, profile.height)
             data.update(weight=v, imt=imt)
         elif k == 'photo_id':
-            data.update(photo = v)
+            data.update(photo=v)
     res = change_profile_data(user_id, **data)
     return res
 
 
-def format_time(td: timedelta) -> str:
-    if td.seconds//3600 == 0:
+def time_formatting(td: timedelta) -> str:
+
+    if td.seconds // 3600 == 0:
         pace = time(minute=(td.seconds // 60) % 60, second=(td.seconds - 60 * ((td.seconds // 60) % 60)))
         res = pace.strftime('%M:%S')
     else:
-        pace = time(hour= td.seconds//3600, minute=(td.seconds // 60) % 60,
-                    second=(td.seconds - 3600*(td.seconds//3600) - 60 * ((td.seconds // 60) % 60)))
+        pace = time(hour=td.seconds // 3600, minute=(td.seconds // 60) % 60,
+                    second=(td.seconds - 3600 * (td.seconds // 3600) - 60 * ((td.seconds // 60) % 60)))
         res = pace.strftime('%H:%M:%S')
     return res
 
 
-def count_race_plan(dist: int|float, plan_time: timedelta) -> list:
-
-    pace = plan_time/dist
-    plan = [format_time(i * pace) for i in range(1, int(dist) + 1)]
+def count_race_plan(dist: int | float, plan_time: timedelta) -> list:
+    pace = plan_time / dist
+    plan = [time_formatting(i * pace) for i in range(1, int(dist) + 1)]
     if isinstance(dist, float) and (dist - int(dist)) > 0:
         plan.append(plan_time)
     return plan
+
+
+def calculate_vdot(result_5k, vdot, results):
+    logger.error('Лог ERROR')
+    count_paces = (count_target_tempo(result_5k, vdot))
+    # await state.update_data(count_tempo=user_dict['count_tempo'],
+    #                         vdot=user_dict['vdot'])
+    # оформляем достижимые результаты
+    target_results = [formatting.as_line(k, formatting.Italic(time_formatting(v)), sep=' ')
+                      for k, v in results.items() if k != 'VD0T']
+    # оформляем темпы для тренировок
+    paces = [formatting.as_line(k, time_formatting(v), sep=' ') for k, v in count_paces.items()] #datetime.strptime(v, '%H:%M:%S')
+    # оформляем сообщение
+    content = formatting.as_list(
+        formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
+                           results["VDOT"]),
+        formatting.as_marked_section(
+            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
+            *target_results,
+            marker="🔸 ", ),
+        formatting.as_marked_section(
+            formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
+            *paces,
+            marker="🔸 ", ),
+    )
+    return count_paces, content
+

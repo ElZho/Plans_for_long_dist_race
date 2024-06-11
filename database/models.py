@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 
@@ -6,12 +7,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 
+logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 
 class User(Base):
-    #create class User with Column connection_date - date, when user started bot, user_id - telegram id
-    #User has connection to profile
+    """ create class User with Column connection_date - date, when user started bot, user_id - telegram id
+    User has connection to profile"""
+
     __tablename__ = 'Users'
     id = Column(Integer, primary_key=True)
     connection_date = Column(DateTime, default=datetime.now, nullable=False)
@@ -28,7 +31,7 @@ class User(Base):
 
 
 class Profile(Base):
-    #Users data - weight, height, age, imt, max pulse, photo
+    """Users data - weight, height, age, imt, max pulse, photo"""
 
     __tablename__ = 'Profile'
     id = Column(Integer, primary_key=True)
@@ -46,7 +49,7 @@ class Profile(Base):
 
 
 class RaceReport(Base):
-    #Data of users race results - distance, race_time, vdot
+    """Data of users race results - distance, race_time, vdot"""
 
     __tablename__ = 'RaceReport'
     id = Column(Integer, primary_key=True)
@@ -61,7 +64,7 @@ class RaceReport(Base):
 
 
 class TrainingPlan(Base):
-    #Data of users race results - plan_name, plan_data, active, completed
+    """Data of users race results - plan_name, plan_data, active, completed"""
 
     __tablename__ = 'TrainingPlan'
     id = Column(BigInteger, primary_key=True)
@@ -77,7 +80,7 @@ class TrainingPlan(Base):
 
 
 class PlanDetails(Base):
-    #Data of users race results - week, first_train, second_train, third_train, completed
+    """Data of users race results - week, first_train, second_train, third_train, completed"""
 
     __tablename__ = 'PlanDetails'
     id = Column(Integer, primary_key=True)

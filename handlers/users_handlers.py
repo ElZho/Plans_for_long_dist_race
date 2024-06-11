@@ -1,15 +1,17 @@
+import logging
 import os
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.state import default_state
 from aiogram.fsm.context import FSMContext
-from aiogram.types import (CallbackQuery, Message, PhotoSize, FSInputFile)
+from aiogram.types import (CallbackQuery, Message, PhotoSize, FSInputFile, ErrorEvent)
 
 from aiogram.utils import formatting
 from datetime import timedelta, datetime
 from re import findall
 
-from services.services import format_plan_details, calculate_pulse_zones, calculate_imt, calculate_max_pulse
+from services.services import format_plan_details, calculate_pulse_zones, calculate_imt, calculate_max_pulse, \
+    calculate_vdot
 from states.states import FSMFillForm
 from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
@@ -17,10 +19,9 @@ from lexicon import lexicon_ru
 from services.calculations import find_vdot, count_target_tempo
 from services.planing import get_plan, sent_plan
 from filters.filtres import CheckTime
-from database.methods import (add_user, create_profile, create_race_report, create_training_plan, create_plan_details,
-                              make_plan_active, make_week_completed, get_my_plans,
-                              get_my_plan_details, get_next_week_plan)
+from database.methods import add_user, create_profile, create_race_report, create_training_plan, create_plan_details
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 
@@ -51,6 +52,11 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
+
+
+@router.error()
+async def error_handler(event: ErrorEvent):
+    logger.critical("Critical error caused by %s", event.exception, exc_info=True)
 
 
 # Этот хэндлер будет срабатывать на команду /fillform
@@ -111,7 +117,7 @@ async def wrong_age(message: Message):
 
 # Этот хэндлер будет срабатывать на нажатие кнопки при
 # выборе пола, если выбран женский пол и переводить в состояние ввода веса
-@router.callback_query(StateFilter(FSMFillForm.fill_gender)) #, F.data.in_(['Женский'])
+@router.callback_query(StateFilter(FSMFillForm.fill_gender))
 async def process_gender_press(callback: CallbackQuery, state: FSMContext):
     # Получаем ранее сохраненные данные
     data = await state.get_data()
@@ -144,7 +150,7 @@ async def process_gender_press(callback: CallbackQuery):
 # и переводить в состояние ввода дистанции
 @router.message(StateFilter(FSMFillForm.fill_weight),
                 lambda x: x.text.replace(',', '').replace('.', '').isdigit()
-                          and 35.0 <= float(x.text.replace(',', '.')) <= 150.0)
+                and 35.0 <= float(x.text.replace(',', '.')) <= 150.0)
 async def process_weight_sent(message: Message, state: FSMContext):
     # Cохраняем вес в хранилище по ключу "weight"
     await state.update_data(weight=float(message.text.replace(',', '.')))
@@ -170,7 +176,7 @@ async def wrong_weight(message: Message):
 # и переводить в состояние ввода дистанции
 @router.message(StateFilter(FSMFillForm.fill_height),
                 lambda x: x.text.replace(',', '').replace('.', '').isdigit()
-                          and 135.0 <= float(x.text.replace(',', '.')) <= 250.0)
+                and 135.0 <= float(x.text.replace(',', '.')) <= 250.0)
 async def process_weight_sent(message: Message, state: FSMContext):
     # Cохраняем вес в хранилище по ключу "weight"
     await state.update_data(height=float(message.text.replace(',', '.')))
@@ -334,30 +340,36 @@ async def process_calculate_vdot_command(message: Message, state: FSMContext):
         find_vdot(user_dict["res_distances"],
                   datetime.strptime(str(user_dict['result']), '%H:%M:%S')))
     if int(user_dict['vdot']) < 65:
+        user_dict['count_tempo'], content = calculate_vdot(user_dict['results']['5000 м'],
+                                                           user_dict['vdot'], user_dict['results'])
+        try:
+            4/0
+        except:
+            logger.exception('Произошло деление на 0')
         # считаем темпы
-        user_dict['count_tempo'] = (
-            count_target_tempo(user_dict['results']['5000 м'],
-                               user_dict['vdot']))
+        # user_dict['count_tempo'] = (
+        #     count_target_tempo(user_dict['results']['5000 м'],
+        #                        user_dict['vdot']))
         await state.update_data(count_tempo=user_dict['count_tempo'],
                                 vdot=user_dict['vdot'])
         # оформляем достижимые результаты
-        target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
-                          for k, v in user_dict['results'].items() if k != 'VD0T']
-        # оформляем темпы для тренировок
-        paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
-        # оформляем сообщение
-        content = formatting.as_list(
-            formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
-                               user_dict['results']['VD0T']),
-            formatting.as_marked_section(
-                formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
-                *target_results,
-                marker="🔸 ", ),
-            formatting.as_marked_section(
-                formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
-                *paces,
-                marker="🔸 ", ),
-        )
+        # target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
+        #                   for k, v in user_dict['results'].items() if k != 'VD0T']
+        # # оформляем темпы для тренировок
+        # paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
+        # # оформляем сообщение
+        # content = formatting.as_list(
+        #     formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
+        #                        user_dict['results']['VD0T']),
+        #     formatting.as_marked_section(
+        #         formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
+        #         *target_results,
+        #         marker="🔸 ", ),
+        #     formatting.as_marked_section(
+        #         formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
+        #         *paces,
+        #         marker="🔸 ", ),
+        # )
         # сохраняем данные о текущих результатах пользователя
         create_race_report(message.from_user.id, user_dict['res_distances'], user_dict['result'], user_dict['vdot'])
 
@@ -457,21 +469,18 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
 async def process_save_plan(message: Message, state: FSMContext):
     # получаем данные
     user_dict = await state.get_data()
-    dt=datetime.now()
+    dt = datetime.now()
     # создаем ид
-    id = message.from_user.id + dt.timestamp()
+    plan_id = message.from_user.id + int(dt.timestamp())
     # сохраняем в бд
-    create_training_plan(message.from_user.id, user_dict['selected_dist'], id)
+    create_training_plan(message.from_user.id, user_dict['selected_dist'], plan_id)
     # сохраняем детали плана
     for k, v in user_dict['plan'].items():
-        create_plan_details(message.from_user.id, id, k, v[0], v[1], v[2])
+        create_plan_details(message.from_user.id, plan_id, k, v[0], v[1], v[2])
 
     await message.answer(lexicon_ru.LEXICON_RU['save_plan'])
 
     await state.clear()
-    t = await state.get_state()
-    print('Состояние', t)
-
 
 
 @router.message(Command(commands='get_plan_in_file'), StateFilter(FSMFillForm.wait_sent_file))

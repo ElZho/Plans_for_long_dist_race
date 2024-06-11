@@ -1,6 +1,6 @@
-from typing import Any
+"""Database function. Inserts, deletes, selects records in and from db"""
 
-from sqlalchemy import create_engine, func, update, select, insert, text
+from sqlalchemy import create_engine, func, update, select, insert
 from sqlalchemy.orm import sessionmaker
 from datetime import time, datetime
 
@@ -35,13 +35,13 @@ def add_user(tg_id: int, user_name: str, gender: str):
 
 def create_profile(tg_id: int, weight: float, height: float, age: float, imt: float, max_pulse: int, photo: str):
     """Add new profile for user"""
-
+    logger.warning('Лог WARNING')
     engine = create_engine(config.db.db_address, echo=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
     user = session.query(User).filter(User.user_id == tg_id).first()
-    profile = session.execute(select(Profile). \
+    profile = session.execute(select(Profile).
                               where(Profile.owner == user.id).order_by(Profile.id.desc()).limit(1)).first()
 
     if profile is None:
@@ -69,7 +69,7 @@ def create_race_report(tg_id: int, distance: str, race_time: time, vdot: int):
     session.commit()
 
 
-def create_training_plan(tg_id: int, plan_name: str, id: int):
+def create_training_plan(tg_id: int, plan_name: str, ids: int):
     """Create new training plan"""
     # func to write game report into database
     engine = create_engine(config.db.db_address, echo=True)
@@ -77,7 +77,7 @@ def create_training_plan(tg_id: int, plan_name: str, id: int):
     Session = sessionmaker(bind=engine)
     session = Session()
     user = session.query(User).filter(User.user_id == tg_id).first()
-    new_plan = TrainingPlan(id=id, plan_name=plan_name, owner=user.id)
+    new_plan = TrainingPlan(id=ids, plan_name=plan_name, owner=user.id)
     session.add(new_plan)
     session.commit()
 
@@ -124,7 +124,7 @@ def make_plan_active(tg_id, plan_id):
     plans = session.query(TrainingPlan).filter(TrainingPlan.owner == user.id, TrainingPlan.completed == False)
     result = 0
     for p in plans:
-        if p.active == True:
+        if p.active:
             return result
     plan = session.query(TrainingPlan).filter(TrainingPlan.id == plan_id, TrainingPlan.owner == user.id,
                                               TrainingPlan.completed == False).first()
@@ -268,7 +268,7 @@ def get_my_race_reports(tg_id: int) -> tuple[int, int, int, int] | int:
     return reports
 
 
-def get_my_profile(tg_id: int) -> tuple:
+def get_my_profile(tg_id: int) -> int | tuple:
     """func to get all users plans
     0 - user not exist
     1 - there is no one plan

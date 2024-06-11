@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import timedelta, datetime, time
 from re import findall
@@ -6,7 +7,7 @@ from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize)
+from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize, ErrorEvent)
 from aiogram.utils import formatting
 
 from database.methods import (get_plan_name, create_race_report, make_plan_active, delete_plan, get_next_week_plan,
@@ -21,6 +22,8 @@ from services.services import show_my_plans, get_plan_details, format_plan_detai
     calculate_save, count_race_plan
 from states.states import FSMFillForm
 
+
+logger = logging.getLogger(__name__)
 router = Router()
 router.message.filter(IsAuthorized())
 
@@ -44,6 +47,11 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
+
+
+@router.error()
+async def error_handler(event: ErrorEvent):
+    logger.critical("Critical error caused by %s", event.exception, exc_info=True)
 
 
 @router.message(Command(commands='get_my_plans'), StateFilter(default_state))

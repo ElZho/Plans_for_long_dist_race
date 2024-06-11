@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -9,6 +11,8 @@ from database.methods import get_users_profile
 from filters.filtres import IsAdmin
 from lexicon import lexicon_ru
 
+
+logger = logging.getLogger(__name__)
 router = Router()
 router.message.filter(IsAdmin())
 

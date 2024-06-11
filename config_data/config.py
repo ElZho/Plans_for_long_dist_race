@@ -6,7 +6,7 @@ from environs import Env
 @dataclass
 class TgBot:
     token: str
-    admin_ids: int
+    admin_ids: list[int]
 
 
 # Database address

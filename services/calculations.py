@@ -1,11 +1,12 @@
-# This modul contains function to calculate VDOT, target tempo to different kind of training runs
+""" This modul contains function to calculate VDOT, target tempo to different kind of training runs"""
+import csv
+import logging
+from datetime import timedelta, datetime  #, time
 
 
+logger = logging.getLogger(__name__)
 def find_vdot(dist, my_time) -> tuple:
-    # this func is looking in guide nearest time for selected distance and gets VDOT
-
-    from datetime import timedelta, datetime
-    import csv
+    """this func is looking in guide nearest time for selected distance and gets VDOT"""
 
     vdot = '85'
     level = None
@@ -22,7 +23,7 @@ def find_vdot(dist, my_time) -> tuple:
                     level = index - hl.index(min(hl))
                     correct_vdot = 0
                 # if first row has time slower than users time, user has to low VDOT level, so VDOT from guid needs to
-                # be correct
+                # be corrected
                 else:
                     level = index
                     t = datetime.strptime(row[dist], '%H:%M:%S')
@@ -38,9 +39,11 @@ def find_vdot(dist, my_time) -> tuple:
 
 
 def count_target_tempo(time5k, vdot):
+    """This function takes the results on 5K and VO2max level and calculates paces for different training runs
+    interval runs, """
     # count tempo for training runs
-    import csv
-    from datetime import datetime, timedelta, time
+    # import csv
+    # from datetime import datetime, timedelta, time
 
     t = datetime.strptime(time5k, '%H:%M:%S')
     t = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second, microseconds=t.microsecond)
@@ -61,6 +64,6 @@ def count_target_tempo(time5k, vdot):
             target = timedelta(minutes=target.minute, seconds=target.second, microseconds=target.microsecond)
             target = target / float(row['dist'])
 
-            times.update({row['name']: timedelta(seconds=round(target.total_seconds()))}) #
+            times.update({row['name']: timedelta(seconds=round(target.total_seconds()))})
 
     return times
