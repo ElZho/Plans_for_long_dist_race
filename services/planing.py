@@ -12,18 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_plan(ind: int, train_tempos: dict[str: str], format_time=time_formatting):
-    # from datetime import datetime, timedelta, time
-    # from services.services import format_time
-
-    # def format_time(td: timedelta) -> str:
-    #     if td.seconds//3600 == 0:
-    #         pace = time(minute=(td.seconds // 60) % 60, second=(td.seconds - 60 * ((td.seconds // 60) % 60)))
-    #         res = pace.strftime('%M:%S')
-    #     else:
-    #         pace = time(hour= td.seconds//3600, minute=(td.seconds // 60) % 60,
-    #                     second=(td.seconds - 3600*(td.seconds//3600) - 60 * ((td.seconds // 60) % 60)))
-    #         res = pace.strftime('%H:%M:%S')
-    #     return res
 
     f_names = ['plan10K.csv', 'HMP.csv', '1-st_MP.csv', 'MP.csv']
 

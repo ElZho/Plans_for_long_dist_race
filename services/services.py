@@ -158,14 +158,14 @@ def calculate_vdot(result_5k, vdot, results):
     # await state.update_data(count_tempo=user_dict['count_tempo'],
     #                         vdot=user_dict['vdot'])
     # оформляем достижимые результаты
-    target_results = [formatting.as_line(k, formatting.Italic(time_formatting(v)), sep=' ')
+    target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
                       for k, v in results.items() if k != 'VD0T']
     # оформляем темпы для тренировок
-    paces = [formatting.as_line(k, time_formatting(v), sep=' ') for k, v in count_paces.items()] #datetime.strptime(v, '%H:%M:%S')
+    paces = [formatting.as_line(k, v, sep=' ') for k, v in count_paces.items()] #datetime.strptime(v, '%H:%M:%S')
     # оформляем сообщение
     content = formatting.as_list(
         formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
-                           results["VDOT"]),
+                           vdot),
         formatting.as_marked_section(
             formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
             *target_results,
@@ -176,4 +176,8 @@ def calculate_vdot(result_5k, vdot, results):
             marker="🔸 ", ),
     )
     return count_paces, content
+
+
+def create_err():
+    a = 5/0
 

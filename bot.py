@@ -13,8 +13,6 @@ from config_data.logging_settings import logging_config
 from handlers import other_handlers, users_handlers, authorized_user_handlers, admin_handlers
 
 
-# with open('../config_data/logging_config.yaml', 'rt') as f:
-#     logging_config = yaml.safe_load(f.read())
 # Инициализируем логгер
 logging.config.dictConfig(logging_config)
 logger = logging.getLogger(__name__)

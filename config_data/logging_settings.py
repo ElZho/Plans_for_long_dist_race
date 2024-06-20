@@ -1,6 +1,6 @@
 import sys
 
-from filters.log_filters import DebugWarningLogFilter, CriticalLogFilter, ErrLogFilter, ErrorLogFilter
+from filters.log_filters import CriticalLogFilter, ErrLogFilter, InfoWarningLogFilter
 
 logging_config = {
     'version': 1,
@@ -27,12 +27,12 @@ logging_config = {
             '()': CriticalLogFilter,
         },
         'error_filter': {
-            '()': ErrorLogFilter,
+            '()': ErrLogFilter,
         },
-        'debug_warning_filter': {
-            '()': DebugWarningLogFilter,
+        'info_warning_filter': {
+            '()': InfoWarningLogFilter,
         },
-        'errlogfilter': {'()': ErrLogFilter}
+        # 'errlogfilter': {'()': ErrLogFilter}
 
     },
     'handlers': {
@@ -40,16 +40,6 @@ logging_config = {
             'class': 'logging.StreamHandler',
             'level': 'INFO',
             'formatter': 'default'
-        },
-        'stderr': {
-            'class': 'logging.StreamHandler',
-        },
-        'stdout': {
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'formatter_2',
-            'filters': ['debug_warning_filter'],
-            'stream': sys.stdout
         },
         'error_file': {
             'class': 'logging.FileHandler',
@@ -69,50 +59,43 @@ logging_config = {
             'filters': ['critical_filter'],
             'encoding': 'utf-8'
         },
+        'info_file': {
+            'class': 'logging.FileHandler',
+            'filename': '../logs/info.log',
+            'mode': 'w',
+            'level': 'INFO',
+            'formatter': 'formatter_1',
+            'filters': ['info_warning_filter'],
+            'encoding': 'utf-8'
+        },
             },
     'loggers': {
         'database.methods': {
             'level': 'ERROR',
-            'handlers': ['error_file', 'critical_file']
+            'handlers': ['critical_file']
         },
         'database.models': {
             'level': 'ERROR',
-            'handlers': ['error_file', 'critical_file']
+            'handlers': ['critical_file']
         },
         'handlers.users_handlers': {
             'level': 'ERROR',
             'handlers': ['critical_file']
         },
-        'handlers.authorized_users_handlers': {
+        'handlers.authorized_user_handlers': {
             'level': 'ERROR',
-            'handlers': ['error_file', 'critical_file', 'stdout']
+            'handlers': ['critical_file']
         },
-        # 'handlers.other_handlers': {
-        #     'level': 'INFO',
-        #     'handlers': ['error_file', 'critical_file']
-        # },
-        # 'handlers.admin_handlers': {
-        #     'level': 'INFO',
-        #     'handlers': ['error_file', 'critical_file']
-        # },
-        # 'services.calculations': {
-        #     'level': 'INFO',
-        #     'handlers': ['error_file', 'critical_file']
-        # },
-        # 'services.planing': {
-        #     'level': 'INFO',
-        #     'handlers': ['error_file', 'critical_file']
-        # },
         'services.services': {
             'level': 'INFO',
-            'handlers': ['error_file', 'critical_file', 'stdout']
+            'handlers': ['critical_file']
         },
     },
     'root': {
         'level': 'INFO',
         'formatter': 'default',
         'propagate': False,
-        'handlers': ['default', 'error_file']
+        'handlers': ['default', 'info_file']
     }
 
 }

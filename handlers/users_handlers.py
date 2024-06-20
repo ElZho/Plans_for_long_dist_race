@@ -346,30 +346,10 @@ async def process_calculate_vdot_command(message: Message, state: FSMContext):
             4/0
         except:
             logger.exception('Произошло деление на 0')
-        # считаем темпы
-        # user_dict['count_tempo'] = (
-        #     count_target_tempo(user_dict['results']['5000 м'],
-        #                        user_dict['vdot']))
+        # считаем темпы и оформляем достижимые результаты
         await state.update_data(count_tempo=user_dict['count_tempo'],
                                 vdot=user_dict['vdot'])
-        # оформляем достижимые результаты
-        # target_results = [formatting.as_line(k, formatting.Italic(v), sep=' ')
-        #                   for k, v in user_dict['results'].items() if k != 'VD0T']
-        # # оформляем темпы для тренировок
-        # paces = [formatting.as_line(k, v, sep=' ') for k, v in user_dict['count_tempo'].items()]
-        # # оформляем сообщение
-        # content = formatting.as_list(
-        #     formatting.as_line(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][0],
-        #                        user_dict['results']['VD0T']),
-        #     formatting.as_marked_section(
-        #         formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][1]),
-        #         *target_results,
-        #         marker="🔸 ", ),
-        #     formatting.as_marked_section(
-        #         formatting.Bold(lexicon_ru.LEXICON_RU['process_calculate_vdot_command'][2]),
-        #         *paces,
-        #         marker="🔸 ", ),
-        # )
+
         # сохраняем данные о текущих результатах пользователя
         create_race_report(message.from_user.id, user_dict['res_distances'], user_dict['result'], user_dict['vdot'])
 

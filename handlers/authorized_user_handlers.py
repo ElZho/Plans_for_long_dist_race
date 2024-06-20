@@ -7,7 +7,7 @@ from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize, ErrorEvent)
+from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize, ErrorEvent, ReplyKeyboardRemove)
 from aiogram.utils import formatting
 
 from database.methods import (get_plan_name, create_race_report, make_plan_active, delete_plan, get_next_week_plan,
@@ -130,7 +130,7 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
 async def process_make_plan_active(message: Message, state: FSMContext):
     data = await state.get_data()
     result = make_plan_active(message.from_user.id, int(data['plan_id']))
-    await message.edit_reply_markup(reply_markup=None)
+
     if result == 0:
         await message.answer(text=lexicon_ru.LEXICON_RU['make_plan_active'][0])
     else:
@@ -145,7 +145,7 @@ async def process_delete_plan(message: Message, state: FSMContext):
     data = await state.get_data()
     delete_plan(message.from_user.id, int(data['plan_id']))
     plan = lexicon_ru.LEXICON_SELECT_DIST[str(data['plan'])]
-    await message.edit_reply_markup(reply_markup=None)
+
     await message.answer(text=lexicon_ru.LEXICON_RU['delete_plan'].format(plan))
     await state.clear()
 
@@ -486,10 +486,11 @@ async def process_plan_my_race(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMFillForm.get_race_dist), CheckDist())
 async def process_get_dist(message: Message, state: FSMContext):
     await state.update_data(dict=float(message.text.replace(',', '.')))
-    if ',' in message.text or '.' in message.text:
-        k, m = message.text.split(',') if ',' in message.text else message.text.split('.')
-    else:
-        k, m = int(message.text), 0
+
+    distance = float(message.text)
+    k = int(distance)
+    m = int((distance - k) * 1000)
+
     await message.answer(text=lexicon_ru.LEXICON_RU['plan_my_race'][1].format(k, m))
     await state.set_state(FSMFillForm.get_race_time)
 
@@ -500,8 +501,9 @@ async def process_get_race_time(message: Message, state: FSMContext):
     race_time = timedelta(hours=int(h), minutes=int(m), seconds=int(s))
     dist = await state.get_data()
     plan = count_race_plan(dist['dict'], race_time)
-    k = str(int(dist['dict']))
-    m = str(round(1000 * (dist['dict'] - int(dist['dict'])), 2))
+
+    k = int(dist['dict'])
+    m = int((dist['dict'] - k) * 1000)
 
     content = formatting.as_marked_section(
         formatting.Bold(lexicon_ru.LEXICON_RU['plan_my_race'][2].format(k, m)),

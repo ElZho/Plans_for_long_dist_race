@@ -32,8 +32,7 @@ def find_vdot(dist, my_time) -> tuple:
                                                                                 '%H:%M:%S')).total_seconds() / refer_time.total_seconds(),
                                          0)
                 break
-        if level:
-            vdot = int(rows[level]['VD0T']) - correct_vdot
+        vdot = int(rows[level]['VD0T']) - correct_vdot
 
         return vdot, rows[level]
 
@@ -41,9 +40,6 @@ def find_vdot(dist, my_time) -> tuple:
 def count_target_tempo(time5k, vdot):
     """This function takes the results on 5K and VO2max level and calculates paces for different training runs
     interval runs, """
-    # count tempo for training runs
-    # import csv
-    # from datetime import datetime, timedelta, time
 
     t = datetime.strptime(time5k, '%H:%M:%S')
     t = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second, microseconds=t.microsecond)
