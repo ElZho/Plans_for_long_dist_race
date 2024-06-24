@@ -44,6 +44,8 @@ logging_config = {
         'error_file': {
             'class': 'logging.FileHandler',
             'filename': '../logs/error.log',
+            # 'maxBytes': 20,
+            # 'backupCount': 5,
             'mode': 'w',
             'level': 'INFO',
             'formatter': 'formatter_1',
@@ -95,7 +97,7 @@ logging_config = {
         'level': 'INFO',
         'formatter': 'default',
         'propagate': False,
-        'handlers': ['default', 'info_file']
+        'handlers': ['info_file'] # 'default',
     }
 
 }

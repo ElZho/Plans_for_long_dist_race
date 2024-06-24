@@ -8,8 +8,7 @@ import logging
 
 class InfoWarningLogFilter(logging.Filter):
     def filter(self, record):
-
-        return 'failed to fetch updates' not in record.msg.lower() and 'sleep for' not in record.msg.lower()
+        return 'failed to fetch updates' not in record.msg.lower() and 'sleep for' not in record.msg.lower() and 'connection established' not in record.msg.lower()
 
 
 class CriticalLogFilter(logging.Filter):

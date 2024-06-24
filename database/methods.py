@@ -1,7 +1,8 @@
 """Database function. Inserts, deletes, selects records in and from db"""
+from typing import Type
 
 from sqlalchemy import create_engine, func, update, select, insert
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Query
 from datetime import time, datetime
 
 import logging
@@ -164,10 +165,10 @@ def make_week_completed(tg_id, plan_id, week):
                                               PlanDetails.week == week).values(completed=True))
 
     result = 0
-
-    if not session.query(PlanDetails).filter(PlanDetails.owner == user.id,
+    details = session.query(PlanDetails).filter(PlanDetails.owner == user.id,
                                              PlanDetails.plan_id == plan_id,
-                                             PlanDetails.completed == False).order_by(PlanDetails.week.desc()).limit(1):
+                                             PlanDetails.completed == False).order_by(PlanDetails.week.desc()).first()
+    if not details:
         session.execute(update(TrainingPlan).where(TrainingPlan.id == plan_id).values(completed=True, active=False))
 
         result = 1
@@ -225,11 +226,13 @@ def get_my_plan_details(tg_id: int, plan_id: int) -> tuple[int, int, int, int] |
     return details
 
 
-def get_next_week_plan(tg_id: int) -> int | list:
-    """ func to get week plan returns first week which has completed False
-    0 - user not exist
-    1 - plan is not exist
-    2 - plan is completed """
+def get_next_week_plan(tg_id: int) -> Query[Type[PlanDetails]]:
+    """ func to get week plan returns first week which has completed False.
+    Returns:
+    0 - plan is not exist
+    1 - plan is completed
+    Details - a record from plan details table
+    """
 
     engine = create_engine(config.db.db_address, echo=True)
     Base.metadata.create_all(engine)
@@ -246,6 +249,7 @@ def get_next_week_plan(tg_id: int) -> int | list:
                                               PlanDetails.completed == False).order_by(PlanDetails.week.desc()).limit(1)
     if detail is None:
         return 1
+
     return detail
 
 

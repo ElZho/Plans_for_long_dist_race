@@ -1,5 +1,6 @@
 import logging
 from datetime import time, timedelta
+from re import findall
 
 from aiogram.utils import formatting
 
@@ -47,10 +48,12 @@ def get_plan_details(user_id, plan_id) -> dict[int: list[str, str, str]]:
     return training
 
 
-def format_plan_details(weekly_train: list, plan_id: int, page, bot_commands: list) -> formatting.Text:
+def format_plan_details(weekly_train: list, plan_id: int, page: int, bot_commands: list) -> formatting.Text:
     """Extract users plan details"""
+
     bot_command = [formatting.BotCommand(bc) for bc in bot_commands]
     page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(page)
+
     training = [formatting.as_key_value(formatting.as_line(
         lexicon_ru.LEXICON_RU[
             'process_calculate_plan_command'][
@@ -176,8 +179,3 @@ def calculate_vdot(result_5k, vdot, results):
             marker="🔸 ", ),
     )
     return count_paces, content
-
-
-def create_err():
-    a = 5/0
-

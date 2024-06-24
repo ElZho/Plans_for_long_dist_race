@@ -342,10 +342,7 @@ async def process_calculate_vdot_command(message: Message, state: FSMContext):
     if int(user_dict['vdot']) < 65:
         user_dict['count_tempo'], content = calculate_vdot(user_dict['results']['5000 м'],
                                                            user_dict['vdot'], user_dict['results'])
-        try:
-            4/0
-        except:
-            logger.exception('Произошло деление на 0')
+
         # считаем темпы и оформляем достижимые результаты
         await state.update_data(count_tempo=user_dict['count_tempo'],
                                 vdot=user_dict['vdot'])
@@ -384,9 +381,9 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
                             page=user_dict['page'])
     # формируем сообщение
 
-    page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
+    # page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
     content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
-                                  page, ['/get_plan_in_file', '/save_plan'])
+                                  user_dict['page'], ['/get_plan_in_file', '/save_plan'])
 
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(**content.as_kwargs(), reply_markup=create_pagination_keyboard(

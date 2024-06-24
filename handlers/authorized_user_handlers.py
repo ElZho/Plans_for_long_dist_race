@@ -19,7 +19,7 @@ from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST
 from services.calculations import find_vdot, count_target_tempo
 from services.planing import sent_plan
 from services.services import show_my_plans, get_plan_details, format_plan_details, collect_my_race_report, \
-    calculate_save, count_race_plan
+    calculate_save, count_race_plan, takes_week_details
 from states.states import FSMFillForm
 
 
@@ -92,17 +92,17 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
 
     if data['page'] > 1:
         # перелистываем страницу назад
-        page = data['page'] - 1
-        await state.update_data(page=page)
+        pg = data['page'] - 1
+        await state.update_data(page=data['page'] - 1)
 
         # format training
-        content = format_plan_details(data['training'][page], data['plan'], page, ['/make_plan_active',
+        content = format_plan_details(data['training'][pg], data['plan'], pg, ['/make_plan_active',
                                                                                    '/delete_plan'])
 
         await callback.message.edit_reply_markup(reply_markup=None)
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
-            f'{str(page)}/{str(data['page_quantity'])}',
+            f'{str(pg)}/{str(data['page_quantity'])}',
             'forward'))
 
 
@@ -336,12 +336,15 @@ async def process_calculate_paces(callback: CallbackQuery, state: FSMContext):
 async def process_get_next_week_plan(message: Message, state: FSMContext):
     result = get_next_week_plan(message.from_user.id)
 
-    await state.update_data(week=result[0].week, plan_id=result[0].plan_id)
     if result == 0:
         await message.answer(lexicon_ru.LEXICON_RU['get_next_week_plan'][0])
-    if result == 1:
+    elif result == 1:
         await message.answer(lexicon_ru.LEXICON_RU['get_next_week_plan'][1])
     else:
+        await state.update_data(week=result[0].week, plan_id=result[0].plan_id, first_train=result[0].first_train,
+                                second_train=result[0].second_train,
+                                third_train=result[0].third_train)
+
         page_text = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(result[0].week)
         weekly_train = [result[0].first_train, result[0].second_train, result[0].third_train]
         training = [formatting.as_key_value(formatting.as_line(
@@ -365,6 +368,7 @@ async def process_get_next_week_plan(message: Message, state: FSMContext):
 @router.message(Command(commands='make_week_completed'), StateFilter(FSMFillForm.make_week_completed))
 async def process_make_week_completed(message: Message, state: FSMContext):
     data = await state.get_data()
+    # spisok = takes_week_details(data)
     result = make_week_completed(message.from_user.id, data['plan_id'], data['week'])
     await message.answer(text=lexicon_ru.LEXICON_RU['make_week_completed'][result].format(data['week']))
     await state.clear()
