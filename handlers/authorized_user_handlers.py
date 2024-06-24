@@ -19,7 +19,7 @@ from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST
 from services.calculations import find_vdot, count_target_tempo
 from services.planing import sent_plan
 from services.services import show_my_plans, get_plan_details, format_plan_details, collect_my_race_report, \
-    calculate_save, count_race_plan, takes_week_details
+    calculate_save, count_race_plan
 from states.states import FSMFillForm
 
 

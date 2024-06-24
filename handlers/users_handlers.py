@@ -381,7 +381,6 @@ async def process_calculate_plan_command(callback: CallbackQuery, state: FSMCont
                             page=user_dict['page'])
     # формируем сообщение
 
-    # page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(user_dict['page'])
     content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
                                   user_dict['page'], ['/get_plan_in_file', '/save_plan'])
 
@@ -404,10 +403,9 @@ async def process_forward_press(callback: CallbackQuery, state: FSMContext):
         user_dict['page'] -= 1
         await state.update_data(page=user_dict['page'])
         # получаем текст страницы
-        page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
-            user_dict['page'])
+
         content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
-                                      page, ['/get_plan_in_file', '/save_plan'])
+                                      user_dict['page'], ['/get_plan_in_file', '/save_plan'])
 
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
@@ -430,10 +428,9 @@ async def process_backward_press(callback: CallbackQuery, state: FSMContext):
         await state.update_data(page=user_dict['page'])
         # формируем текст сообщения
         # text = user_dict['plan'][str(user_dict['page'])]
-        page = lexicon_ru.LEXICON_RU['process_calculate_plan_command'][0].format(
-            user_dict['page'])
+
         content = format_plan_details(user_dict['plan'][str(user_dict['page'])], user_dict['selected_dist'],
-                                      page, ['/get_plan_in_file', '/save_plan'])
+                                      user_dict['page'], ['/get_plan_in_file', '/save_plan'])
 
         await callback.message.edit_text(**content.as_kwargs(), reply_markup=create_pagination_keyboard(
             'backward',
