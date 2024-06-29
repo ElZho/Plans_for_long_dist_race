@@ -5,10 +5,14 @@ import logging
 # do not delete this imports. its works in "eval" formulas in get_plan function
 from datetime import datetime, timedelta, time
 
+from config_data.config import PathConfig, load_path
 # do not delete this imports. its works in "eval" formulas in get_plan function
 from services.services import time_formatting
 
+
 logger = logging.getLogger(__name__)
+
+path = '..' # '.' docker
 
 
 def get_plan(ind: int, train_tempos: dict[str: str], format_time=time_formatting):
@@ -19,7 +23,7 @@ def get_plan(ind: int, train_tempos: dict[str: str], format_time=time_formatting
     for k, val in train_tempos.items():
         exec(k + '= val')
 
-    with open('../guides/' + f_names[ind], encoding='utf-8') as file:
+    with open(path + '/guides/' + f_names[ind], encoding='utf-8') as file: # '../guides/'
         rows = list(csv.DictReader(file, delimiter=';'))
         for row in rows:
             plan.update({row['week']: [eval(row['key run #1']), eval(row['key run #2']), eval(row['key run #3'])]})
@@ -29,7 +33,7 @@ def get_plan(ind: int, train_tempos: dict[str: str], format_time=time_formatting
 
 def sent_plan(distance: str, info_text: str, train_plan: dict, mess_id: int) -> str:
     """This function is used for print training plan in file"""
-    filename = '../calc_plans/Plan for ' + distance + '_' + str(mess_id) + '.txt'
+    filename = path + '/calc_plans/Plan for ' + distance + '_' + str(mess_id) + '.txt'   # '../calc_plans/Plan for '
     with open(filename, 'w', encoding='utf-8') as file:
         file.write('*** Plan for ' + distance + '***\n\n')
         file.writelines(info_text)

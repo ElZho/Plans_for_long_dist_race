@@ -69,7 +69,6 @@ def format_plan_details(weekly_train: list, plan_id: int, page: int, bot_command
             *training,
             marker="\n🔸 ",
         ), *bot_command
-        # formatting.BotCommand(bot_command)
     )
     return content
 

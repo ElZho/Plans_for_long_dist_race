@@ -7,10 +7,10 @@ from datetime import time, datetime
 
 import logging
 
-from config_data.config import Config, load_config
+from config_data.config import DBConfig, load_db_config
 from database.models import Base, User, Profile, RaceReport, TrainingPlan, PlanDetails
 
-config: Config = load_config()
+config: DBConfig = load_db_config()
 
 # initiate modul's logger 
 logger = logging.getLogger(__name__)

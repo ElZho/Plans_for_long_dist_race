@@ -4,14 +4,15 @@ from datetime import timedelta, datetime, time
 from re import findall
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize, ErrorEvent, ReplyKeyboardRemove)
+from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize, ErrorEvent)
 from aiogram.utils import formatting
 
 from database.methods import (get_plan_name, create_race_report, make_plan_active, delete_plan, get_next_week_plan,
-                              make_week_completed, get_my_profile, change_profile_data)
+                              make_week_completed, get_my_profile)
 from filters.filtres import CheckTime, IsAuthorized, CheckPlans, CheckRaces, CheckProfileData, CheckDist
 from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon import lexicon_ru
@@ -397,10 +398,12 @@ async def process_showmyprofile(message: Message):
                                  formatting.BotCommand('/change_profile'),
                                  sep="\n\n",
                                  )
-
-    await message.answer_photo(
-        photo=profile.photo,
-        caption=caption.as_html())
+    try:
+        await message.answer_photo(
+            photo=profile.photo,
+            caption=caption.as_html())
+    except TelegramBadRequest:
+        logger.error('Тут было исключение', profile.photo, exc_info=True)
 
 
 @router.message(Command('change_profile'), StateFilter(default_state))

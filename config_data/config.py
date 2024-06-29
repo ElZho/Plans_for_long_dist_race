@@ -15,19 +15,39 @@ class DB:
     db_address: str
 
 
-# Admins ids
-# @dataclass
-# class Admin_ids:
-#     admin_ids: int
+@dataclass
+class PATH:
+    file_path: str
 
 
 @dataclass
 class Config:
     tg_bot: TgBot
+
+
+@dataclass
+class DBConfig:
     db: DB
+
+
+@dataclass
+class PathConfig:
+    file_path: PATH
 
 
 def load_config(path: str | None = None) -> Config:
     env = Env()
     env.read_env(path)
-    return Config(tg_bot=TgBot(token=env('BOT_TOKEN'), admin_ids=env('ADMIN_IDS')), db=DB(db_address=env('DB_ADDRESS')))
+    return Config(tg_bot=TgBot(token=env('BOT_TOKEN'), admin_ids=env('ADMIN_IDS')))
+
+
+def load_db_config(path: str | None = None) -> DBConfig:
+    env = Env()
+    env.read_env(path)
+    return DBConfig(db=DB(db_address=env('DB_ADDRESS')))
+
+
+def load_path(path: str | None = None) -> PathConfig:
+    env = Env()
+    env.read_env(path)
+    return PathConfig(file_path=PATH(file_path=env('PATH')))

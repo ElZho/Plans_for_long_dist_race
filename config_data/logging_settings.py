@@ -1,6 +1,11 @@
 import sys
+from config_data.config import load_path, PathConfig
 
 from filters.log_filters import CriticalLogFilter, ErrLogFilter, InfoWarningLogFilter
+
+
+
+path = '..' # '.' docker
 
 logging_config = {
     'version': 1,
@@ -43,9 +48,7 @@ logging_config = {
         },
         'error_file': {
             'class': 'logging.FileHandler',
-            'filename': '../logs/error.log',
-            # 'maxBytes': 20,
-            # 'backupCount': 5,
+            'filename': path + '/logs/error.log',
             'mode': 'w',
             'level': 'INFO',
             'formatter': 'formatter_1',
@@ -54,7 +57,7 @@ logging_config = {
         },
         'critical_file': {
             'class': 'logging.FileHandler',
-            'filename': '../logs/critical_errors.log',
+            'filename': path + '/logs/critical.log',
             'mode': 'w',
             'level': 'ERROR',
             'formatter': 'formatter_3',
@@ -63,7 +66,7 @@ logging_config = {
         },
         'info_file': {
             'class': 'logging.FileHandler',
-            'filename': '../logs/info.log',
+            'filename': path + '/logs/info.log',
             'mode': 'w',
             'level': 'INFO',
             'formatter': 'formatter_1',
@@ -97,7 +100,7 @@ logging_config = {
         'level': 'INFO',
         'formatter': 'default',
         'propagate': False,
-        'handlers': ['info_file'] # 'default',
+        'handlers': ['default', 'info_file']
     }
 
 }

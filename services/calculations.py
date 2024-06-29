@@ -1,16 +1,20 @@
 """ This modul contains function to calculate VDOT, target tempo to different kind of training runs"""
 import csv
 import logging
-from datetime import timedelta, datetime  #, time
+from datetime import timedelta, datetime
+
+from config_data.config import PathConfig, load_path
 
 
 logger = logging.getLogger(__name__)
+
+path = '..' # '.' docker
 def find_vdot(dist, my_time) -> tuple:
     """this func is looking in guide nearest time for selected distance and gets VDOT"""
 
     vdot = '85'
     level = None
-    with open('../guides/vdot.csv', encoding='utf-8') as file:
+    with open(path + '/guides/vdot.csv', encoding='utf-8') as file:  #'../guides/vdot.csv'
         rows = list(csv.DictReader(file, delimiter=';'))
 
         for index, row in enumerate(rows):
@@ -51,7 +55,7 @@ def count_target_tempo(time5k, vdot):
     difference = (time5k - timedelta(minutes=16)).total_seconds()
 
     times = dict()
-    with open('../guides/base_koef.csv', encoding='utf-8') as file:
+    with open(path + '/guides/base_koef.csv', encoding='utf-8') as file: #'../guides/base_koef.csv'
         rows = list(csv.DictReader(file, delimiter=';'))
 
         for row in rows:

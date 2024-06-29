@@ -1,12 +1,9 @@
 import asyncio
-# import logging
-import yaml
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 import logging.config
-from aiogram.fsm.storage.redis import RedisStorage, Redis
 
 from config_data.config import Config, load_config
 from config_data.logging_settings import logging_config

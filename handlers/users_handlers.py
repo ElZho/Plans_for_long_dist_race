@@ -16,7 +16,7 @@ from states.states import FSMFillForm
 from keyboards.keyboards import create_pagination_keyboard, create_inline_kb
 from lexicon.lexicon_ru import LEXICON_INLINE_BUTTUNS, LEXICON_SELECT_DIST, SHOW_DATA
 from lexicon import lexicon_ru
-from services.calculations import find_vdot, count_target_tempo
+from services.calculations import find_vdot
 from services.planing import get_plan, sent_plan
 from filters.filtres import CheckTime
 from database.methods import add_user, create_profile, create_race_report, create_training_plan, create_plan_details
