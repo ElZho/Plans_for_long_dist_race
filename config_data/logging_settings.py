@@ -1,5 +1,4 @@
 import sys
-from config_data.config import load_path, PathConfig
 
 from filters.log_filters import CriticalLogFilter, ErrLogFilter, InfoWarningLogFilter
 
@@ -64,6 +63,14 @@ logging_config = {
             'filters': ['critical_filter'],
             'encoding': 'utf-8'
         },
+        'unhandled_file': {
+            'class': 'logging.FileHandler',
+            'filename': path + '/logs/unhandled.log',
+            'mode': 'w',
+            'level': 'INFO',
+            'formatter': 'formatter_3',
+            'encoding': 'utf-8'
+        },
         'info_file': {
             'class': 'logging.FileHandler',
             'filename': path + '/logs/info.log',
@@ -75,11 +82,11 @@ logging_config = {
         },
             },
     'loggers': {
-        'database.methods': {
+        'database_old.methods': {
             'level': 'ERROR',
             'handlers': ['critical_file']
         },
-        'database.models': {
+        'database_old.models': {
             'level': 'ERROR',
             'handlers': ['critical_file']
         },
@@ -95,6 +102,11 @@ logging_config = {
             'level': 'INFO',
             'handlers': ['critical_file']
         },
+        'middlewares.log_middleware': {
+            'level': 'INFO',
+            'handlers': ['unhandled_file']
+        },
+
     },
     'root': {
         'level': 'INFO',

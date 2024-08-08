@@ -25,6 +25,7 @@ def create_inline_kb(width: int,
 
     # Заполняем список кнопками
     for button, text in Button_name.items():
+
         buttons.append(InlineKeyboardButton(
             text=text,
             callback_data=button))

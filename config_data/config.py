@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from environs import Env
 
@@ -6,18 +7,13 @@ from environs import Env
 @dataclass
 class TgBot:
     token: str
-    admin_ids: list[int]
+    admin_ids: int
 
 
 # Database address
 @dataclass
 class DB:
     db_address: str
-
-
-@dataclass
-class PATH:
-    file_path: str
 
 
 @dataclass
@@ -31,14 +27,17 @@ class DBConfig:
 
 
 @dataclass
-class PathConfig:
-    file_path: PATH
+class GuidesConfig:
+    plans: list
+    vdot_guid: list
+    koef: list
+
 
 
 def load_config(path: str | None = None) -> Config:
     env = Env()
     env.read_env(path)
-    return Config(tg_bot=TgBot(token=env('BOT_TOKEN'), admin_ids=env('ADMIN_IDS')))
+    return Config(tg_bot=TgBot(token=env('BOT_TOKEN'), admin_ids=int(env('ADMIN_IDS'))))
 
 
 def load_db_config(path: str | None = None) -> DBConfig:
@@ -47,7 +46,13 @@ def load_db_config(path: str | None = None) -> DBConfig:
     return DBConfig(db=DB(db_address=env('DB_ADDRESS')))
 
 
-def load_path(path: str | None = None) -> PathConfig:
-    env = Env()
-    env.read_env(path)
-    return PathConfig(file_path=PATH(file_path=env('PATH')))
+def load_guides_config(path: str | None = None):
+    """This func loads plans in project"""
+
+    with open(path + '/guides/train_for_race_plans.json', encoding='utf-8') as file:
+        plan = json.load(file)
+    with open(path + "/guides/vdot.json", encoding='utf-8') as file:
+        vdot_guid = json.load(file)
+    with open(path + "/guides/base_koef.json", encoding='utf-8') as file:
+        koef = json.load(file)
+    return GuidesConfig(plans=plan, vdot_guid=vdot_guid, koef=koef)
