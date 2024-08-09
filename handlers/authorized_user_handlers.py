@@ -441,20 +441,24 @@ async def process_enter_train_results(message: Message, state: FSMContext, db: D
     data = await state.get_data()
 
     results = await db.get_list_oftrains(data['plan_id'], data['week'])
-    buttons_dict = dict({'train1': '1-я тренировка',
-          'train2': '2-я тренировка', 'train3': '3-й тренировка'})
-
+    buttons_dict = dict({'train1': i18n.get("trainresultsbuttons", button='train1'),
+                         'train2': i18n.get("trainresultsbuttons", button='train2'),
+                         'train3': i18n.get("trainresultsbuttons", button='train3')
+                         })
+    # buttons_dict = dict({'train1': '1-я тренировка',
+    #       'train2': '2-я тренировка', 'train3': '3-й тренировка'})
     for result in results:
-        buttons_dict.pop(result.train)
+        if result.train in buttons_dict.keys():
+            buttons_dict.pop(result.train)
 
     if buttons_dict:
-        await message.answer(text='Выберите тренировку',
+        await message.answer(text=i18n.get("entertrainresults", case=0),       #'Выберите тренировку',
                             reply_markup=create_inline_kb(1, buttons_dict))
         await state.set_state(FSMFillForm.select_train_results)
 
     else:
-        await message.answer(text='Вы отметили все тренировки.')
-        await state.clear()
+        await message.answer(text=i18n.get("entertrainresults", case=1))   #'Вы отметили все тренировки.'
+        # await state.clear()
 
 
 @router.callback_query(StateFilter(FSMFillForm.select_train_results), F.data.in_(["train1", "train2", "train3"]))
@@ -480,7 +484,7 @@ async def process_select_train_results(callback: CallbackQuery, state: FSMContex
         else:
             bottons.update({str(interval): str(interval) + 'km'})
 
-    await callback.message.answer(text='Выбери дистанцию, за которую надо внести результат',
+    await callback.message.answer(text=i18n.get("selecttrainresults"), #  'Выбери дистанцию, за которую надо внести результат',
                                   reply_markup=create_inline_kb(1, bottons))
     await state.set_state(FSMFillForm.add_train_results)
 
@@ -492,9 +496,9 @@ async def process_enter_train_results(callback: CallbackQuery, state: FSMContext
     quantity = data['intervals'].get(float(callback.data))
 
     if quantity == 1:
-        text = 'Введите результат для дистанции {} км'.format(callback.data)
+        text = i18n.get("addtrainresults", case=0, dist=str(callback.data)) # 'Введите результат для дистанции {} км'.format(callback.data)
     else:
-        text = 'Введите лучший и худший результаты на интервале {} км'.format(callback.data)
+        text = i18n.get("addtrainresults", case=1, dist=str(callback.data)) # 'Введите лучший и худший результаты на интервале {} км'.format(callback.data)
 
     await state.update_data(waiting_result=callback.data)
     await callback.message.answer(text=text)
@@ -502,7 +506,7 @@ async def process_enter_train_results(callback: CallbackQuery, state: FSMContext
 
 
 @router.message(StateFilter(FSMFillForm.wait_train_results), CheckTrainTimes())
-async def process_enter_times(message: Message, state: FSMContext, plans: dict, i18n: TranslatorRunner):
+async def process_enter_times(message: Message, state: FSMContext, i18n: TranslatorRunner):
 
     times = message.text.split(' ')
     data = await state.get_data()
@@ -511,36 +515,61 @@ async def process_enter_times(message: Message, state: FSMContext, plans: dict, 
     goal = data['goal_times'][float(data['waiting_result'])]
     result_list = convert_times(times, goal)
 
-    print('Время', result_list)
     data['results'].update({data['waiting_result']: result_list})
 
     await state.update_data(results=data['results'], waiting_result=None,
                             intervals=data['intervals'])
 
     if data['intervals']:
-        bottons = dict()
+        buttons = dict()
 
         for interval in data['intervals']:
             if interval < 1:
-                bottons.update({str(interval): str(int(interval * 1000)) + 'm'})
+                buttons.update({str(interval): str(int(interval * 1000)) + 'm'})
 
             else:
-                bottons.update({str(interval): str(interval) + 'km'})
-        await message.answer(text='Успешно! Выбери дистанцию, за которую надо внести результат',
-                             reply_markup=create_inline_kb(1, bottons))
+                buttons.update({str(interval): str(interval) + 'km'})
+        await message.answer(text=i18n.get("waittrainresults", case=0),  #'Успешно! Выбери дистанцию, за которую надо внести результат',
+                             reply_markup=create_inline_kb(1, buttons))
         await state.set_state(FSMFillForm.add_train_results)
     else:
-        await message.answer(text='Успешно! Сохранить - /save_trainresults')
+        await message.answer(text=i18n.get("waittrainresults", case=1)) #'Успешно! Сохранить - /save_trainresults')
         await state.set_state(FSMFillForm.wait_save_trainresult)
 
 
 @router.message(StateFilter(FSMFillForm.wait_save_trainresult))
-async def process_save_results(message: Message, state: FSMContext, db: Database, plans: dict, i18n: TranslatorRunner):
+async def process_save_results(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
     # get data from memorystorage
     data = await state.get_data()
+    text_answer = list()
+    for res in data['results']:
+
+        f = lambda x: str(float(x) * 1000) + "метров" if float(x) < 1 else x + " км"
+        dist = f(res)
+        restimes = data['results'][res]
+        print('Ваши результаты за дистанцию {}'.format(dist))
+        print('Целевое время {}. Фактическое время {} + {}'.format(restimes[0], restimes[1], restimes[2]))
+        if restimes[2]:
+            diff = restimes[2]
+        else:
+            diff = ''
+        if restimes[0] > restimes[1]:
+            print('Тренировка завершена успешно!')
+            textres = i18n.get("showresults", dist=dist, goal=time_formatting(restimes[0]),
+                               fact=time_formatting(restimes[1]), diff=diff,
+                               case=0)
+        else:
+            print('Получится следующий раз')
+            textres = i18n.get("showresults", dist=dist, goal=time_formatting(restimes[0]),
+                               fact=time_formatting(restimes[1]), diff=diff,
+                               case=1)
+        text_answer.append(textres)
+
+
 
     await db.add_train_results(message.from_user.id, data['plan_id'], data['week'], data['train'], data['results'])
-    await message.answer(text='Успешно!')
+    await message.answer(text=i18n.get("savetrainresult")
+                         + '/n'.join(text_answer)) #'Успешно!')
     await state.clear()
     pass
 

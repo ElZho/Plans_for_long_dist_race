@@ -113,7 +113,7 @@ def time_formatting(td: timedelta|time) -> str:
                         second=(td.seconds - 3600 * (td.seconds // 3600) - 60 * ((td.seconds // 60) % 60)))
             res = pace.strftime('%H:%M:%S')
 
-    elif isinstance(td, time):
+    elif isinstance(td, (time, datetime)):
 
         if td.hour == 0:
             res = td.strftime('%M:%S')
@@ -241,7 +241,7 @@ def get_trainintervals(train: list, train_number: str, train_tempo: dict) -> dic
     return interval_dict, goal_time
 
 
-def convert_times(times: list[str], goal_time: time) -> list[time]:
+def convert_times(times: list[str], goal_time: time) -> list[datetime]:
     """func convert results in timeformat and count difference"""
     # convert str in timedelta
     results = [time_formatting(goal_time),]
@@ -259,5 +259,4 @@ def convert_times(times: list[str], goal_time: time) -> list[time]:
                               if len(x) == 8 else datetime.strptime(x, '%M:%S'), results))
         results.append(None)
 
-    print(results)
     return results

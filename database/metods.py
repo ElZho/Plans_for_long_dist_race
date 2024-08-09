@@ -328,12 +328,12 @@ class Database:
         """func to save train results"""
         # get users profile
         user = await self.session.execute(select(User).where(User.user_id == tg_id))
+        user_id = user.scalar().id
 
-        print('Результаты', results)
         # add results
         for key, value in results.items():
 
-            train_result = TrainingResult(owner=user.scalar().id,
+            train_result = TrainingResult(owner=user_id,
                                       plan_id=plan_id,
                                       week=week,
                                       train=train,
