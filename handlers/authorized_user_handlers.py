@@ -1,7 +1,7 @@
 import logging
-import os
+# import os
 import random
-from datetime import timedelta, datetime, time
+from datetime import timedelta, datetime
 from re import findall
 
 from aiogram import F, Router
@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import (CallbackQuery, Message, FSInputFile, PhotoSize, ErrorEvent)
+from aiogram.types import (CallbackQuery, Message, PhotoSize)
 
 from fluentogram import TranslatorRunner
 
@@ -24,7 +24,6 @@ from services.services import find_vdot, time_formatting, get_paces, format_plan
 
 from states.states import FSMFillForm
 
-
 logger = logging.getLogger(__name__)
 router = Router()
 router.message.filter(IsAuthorized())
@@ -36,7 +35,6 @@ async def process_help_command(message: Message, i18n: TranslatorRunner):
     await message.answer(
         text=i18n.get('help_-auth-user')
     )
-
 
 
 @router.message(Command(commands='add_new_race_result'), StateFilter(default_state))
@@ -58,7 +56,7 @@ async def process_add_new_result(message: Message, state: FSMContext, i18n: Tran
     await state.set_state(FSMFillForm.add_new_result)
 
 
-@router.message(StateFilter(FSMFillForm.add_new_result), ~CheckRaceDist()) #F.data.in_(distance_buttons_keys)
+@router.message(StateFilter(FSMFillForm.add_new_result), ~CheckRaceDist())
 async def warning_not_distances(message: Message, i18n: TranslatorRunner):
     """this handler works when there is wrong distance is done"""
     await message.answer(
@@ -66,7 +64,7 @@ async def warning_not_distances(message: Message, i18n: TranslatorRunner):
     )
 
 
-@router.callback_query(StateFilter(FSMFillForm.add_new_result), CheckRaceDist()) #F.data.in_(distance_buttons_keys)
+@router.callback_query(StateFilter(FSMFillForm.add_new_result), CheckRaceDist())
 async def select_distances(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
     """this handler works to ask user enter race time"""
 
@@ -115,7 +113,7 @@ async def warning_wrong_time(message: Message, i18n: TranslatorRunner):
 
 @router.message(Command(commands='calculate'), StateFilter(default_state))
 async def process_select_race(message: Message, state: FSMContext, i18n: TranslatorRunner, db: Database):
-    """handler to begin plan calculation. Ask user to select target distance."""
+    """this handler to begin plan calculation. Ask user to select target distance."""
 
     race_rep = await db.get_last_race(message.from_user.id)
 
@@ -129,10 +127,14 @@ async def process_select_race(message: Message, state: FSMContext, i18n: Transla
                                 vdot=race_rep[0].vdot, case=1)
 
         await message.answer(i18n.confirmresult(countresults=len(race_rep),
-                                            dist=i18n.get("distancebuttonskeys", racedist=race_rep[0].distance), # distance_buttons_keys[race_rep[0].distance]
-                                            result=time_formatting(race_rep[0].race_time)),
-                                            reply_markup=create_inline_kb(2, dict({str(race_rep[0].id): "Да!",
-                                                                                    'select_other': "Нет.Выберу другой"})))
+                                                dist=i18n.get("distancebuttonskeys", racedist=race_rep[0].distance),
+                                                # distance_buttons_keys[race_rep[0].distance]
+                                                result=time_formatting(race_rep[0].race_time)),
+                             reply_markup=create_inline_kb(2,
+                                                           dict({str(race_rep[0].id): i18n.get("yes-no-buttons",
+                                                                                               butt="yes"),
+                                                                 'select_other': i18n.get("yes-no-buttons",
+                                                                                          butt="no")})))
 
     await state.set_state(FSMFillForm.select_result)
 
@@ -177,9 +179,8 @@ async def process_calculate_paces(callback: CallbackQuery, state: FSMContext, i1
     list_of_races = dict()
 
     for race in all_races:
-
         text = i18n.raceview(racedate=race.race_date, dist=i18n.get("distancebuttonskeys", racedist=race.distance),
-                             racetime=time_formatting(race.race_time))  #distance_buttons_keys[race.distance]
+                             racetime=time_formatting(race.race_time))
 
         list_of_races[str(race.id)] = text
 
@@ -190,7 +191,7 @@ async def process_calculate_paces(callback: CallbackQuery, state: FSMContext, i1
 @router.callback_query(StateFilter(FSMFillForm.result_analysis), CheckRaces())
 async def result_analysis(callback: CallbackQuery, i18n: TranslatorRunner, db: Database, koef: list, plans: dict,
                           state: FSMContext):
-    """This handler works when user choosed race"""
+    """This handler works when user selected race"""
     race = await db.get_race_from_id(callback.from_user.id, int(callback.data))
 
     if int(race.vdot) < 65:
@@ -209,7 +210,7 @@ async def result_analysis(callback: CallbackQuery, i18n: TranslatorRunner, db: D
             train_dist_dict.update({k: i18n.get('distances', dist=k)})
 
         await callback.message.answer(text=i18n.paces.count(selectvar=1, **past_in_text_var),
-                             reply_markup=create_inline_kb(2, train_dist_dict)) #select_train_dist
+                                      reply_markup=create_inline_kb(2, train_dist_dict))
 
         await state.set_state(FSMFillForm.select_dist)
     else:
@@ -217,10 +218,10 @@ async def result_analysis(callback: CallbackQuery, i18n: TranslatorRunner, db: D
         await state.clear()
 
 
-@router.callback_query(StateFilter(FSMFillForm.select_dist), CheckTrainDist()) # select_train_dist.keys()
+@router.callback_query(StateFilter(FSMFillForm.select_dist), CheckTrainDist())  # select_train_dist.keys()
 @router.callback_query(StateFilter(FSMFillForm.view_saved_plan), CheckPlans())
 async def calculate_train_plan(callback: CallbackQuery, i18n: TranslatorRunner, plans: dict,
-                          state: FSMContext, db: Database):
+                               state: FSMContext, db: Database):
     """This Handler calculates and shows first page of plan"""
 
     data = await state.get_data()
@@ -236,18 +237,17 @@ async def calculate_train_plan(callback: CallbackQuery, i18n: TranslatorRunner, 
         count_tempo = await db.get_paces_data(callback.from_user.id, pace_id=plan_details.pace_id)
         data['count_tempo'] = dict(count_tempo.__dict__)
 
-
         await state.update_data(count_tempo=data['count_tempo'], plan_id=int(callback.data))
 
     content = format_plan_details(i18n.get("distances", dist=dist), plan[str(week)], week, data['count_tempo'],
-                                  i18n, data['case']) #select_train_dist[dist]
+                                  i18n, data['case'])
 
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.update_data(week=week, dist=dist, page_quantity=len(plan))
     await callback.message.answer(content, reply_markup=create_pagination_keyboard(
-            'backward',
-            f'{str(week)}/{str(len(plan))}',
-            'forward'))
+        'backward',
+        f'{str(week)}/{str(len(plan))}',
+        'forward'))
     if data['case'] == 1:
         await state.set_state(FSMFillForm.wait_save_file)
 
@@ -262,11 +262,11 @@ async def process_forward_press(callback: CallbackQuery, i18n: TranslatorRunner,
 
     dist = data['dist']
     plan = plans[dist]
-    week = data['week']-1
+    week = data['week'] - 1
 
     if week > 0:
         content = format_plan_details(i18n.get("distances", dist=dist), plan[str(week)], week, data['count_tempo'],
-                                      i18n, data['case']) #select_train_dist[dist]
+                                      i18n, data['case'])
         await callback.message.edit_reply_markup(reply_markup=None)
         await state.update_data(week=week)
         await callback.message.edit_text(content, reply_markup=create_pagination_keyboard(
@@ -285,11 +285,11 @@ async def process_forward_press(callback: CallbackQuery, i18n: TranslatorRunner,
 
     dist = data['dist']
     plan = plans[dist]
-    week = data['week']+1
+    week = data['week'] + 1
 
     if week <= data['page_quantity']:
         content = format_plan_details(i18n.get("distances", dist=dist), plan[str(week)], week, data['count_tempo'],
-                                      i18n, data['case']) #,select_train_dist[dist]
+                                      i18n, data['case'])
         await callback.message.edit_reply_markup(reply_markup=None)
         await state.update_data(week=week)
         await callback.message.edit_text(content, reply_markup=create_pagination_keyboard(
@@ -305,7 +305,7 @@ async def process_save_plan(message: Message, state: FSMContext, db: Database, i
     user_dict = await state.get_data()
 
     # сохраняем в бд
-    result = await db.add_plan_data(message.from_user.id, user_dict['paces_id'],user_dict['dist'],
+    result = await db.add_plan_data(message.from_user.id, user_dict['paces_id'], user_dict['dist'],
                                     user_dict['page_quantity'])
 
     if result[0]:
@@ -318,7 +318,8 @@ async def process_save_plan(message: Message, state: FSMContext, db: Database, i
 
 @router.message(Command(commands='get_my_plans'), StateFilter(default_state))
 async def process_get_my_plans(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
-
+    """this handler works user sand command get_my_plans and shows users plans.
+    It shows active, completed and other plans"""
     # get plans from db and pass them to buttons
     plans = await db.get_my_plans(message.from_user.id)
 
@@ -326,10 +327,10 @@ async def process_get_my_plans(message: Message, state: FSMContext, db: Database
         buttons_name = dict()
         for plan in plans:
 
-            if plan.active == True:
+            if plan.active:
                 butt = i18n.planbottons(case='active', plandate=plan.plan_date, dist=plan.plan)
                 buttons_name.update({str(plan.id): butt})
-            elif plan.completed == True:
+            elif plan.completed:
                 butt = i18n.planbottons(case='compleeted', plandate=plan.plan_date, dist=plan.plan)
                 buttons_name.update({str(plan.id): butt})
             else:
@@ -349,27 +350,31 @@ async def process_get_my_plans(message: Message, state: FSMContext, db: Database
 
 @router.message(Command(commands='make_plan_active'), FSMFillForm.view_saved_plan)
 async def process_make_plan_active(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
+    """this handler works when user sand command make_plan_active. Checks if there is active plan. If not,
+    make plan active, else sends message that user already has active plan."""
     data = await state.get_data()
     result = await db.make_plan_active(message.from_user.id, int(data['plan_id']))
 
-    if result == True:
+    if result:
         await message.answer(text=i18n.makeplanactive(case=1))
 
     else:
 
         await message.answer(text=i18n.makeplanactive(case=2, dist=i18n.get("distances", dist=result.plan),
-                                                      dataplan=result.plan_date)) #,select_train_dist[result.plan]
+                                                      dataplan=result.plan_date))
 
     await state.clear()
 
 
 @router.message(Command(commands='delete_plan'), FSMFillForm.view_saved_plan)
 async def process_delete_plan(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
+    """this handler works when user sand command delete_plan. Deletes plan if there is such plan, sends message if
+    there is no such plan."""
     data = await state.get_data()
     result = await db.delete_plan(message.from_user.id, int(data['plan_id']))
 
     if result:
-        plan = i18n.get("distances", dist=data['dist']) # select_train_dist[data['dist']]
+        plan = i18n.get("distances", dist=data['dist'])  # select_train_dist[data['dist']]
         await message.answer(text=i18n.deleteplan(case=1, plan=plan))
 
     else:
@@ -378,44 +383,23 @@ async def process_delete_plan(message: Message, state: FSMContext, db: Database,
     await state.clear()
 
 
-# @router.message(Command(commands='get_plan_in_file'), StateFilter(default_state))
-# async def process_sent_file(message: Message, state: FSMContext):
-#     data = await state.get_data()
-#
-#
-#
-# @router.callback_query(StateFilter(FSMFillForm.get_saved_plan_in_file), CheckPlans())
-# async def process_get_saved_plan_in_file(callback: CallbackQuery, state: FSMContext):
-#     # get training and format it
-#     data = get_plan_details(callback.from_user.id, callback.data)
-#     plan_name = get_plan_name(callback.data)
-#
-#     # упаковываем в файл txt
-#     filename = sent_plan(LEXICON_SELECT_DIST[str(plan_name)],
-#                          lexicon_ru.LEXICON_RU['Info_text'], data, callback.message.chat.id)
-#     # отправляем
-#     doc = FSInputFile(filename)
-#     await callback.message.reply_document(doc)
-#     # удаляем файл
-#     os.remove(filename)
-#     await state.clear()
-#
-
 @router.message(Command(commands='get_next_week_plan'))
 async def process_get_next_week_plan(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner,
                                      plans: list):
+    """this handler works when user sand command get_next_week_plan and shows first not commpleted week plan."""
+    # gets active plan
     result = await db.get_active_plan(message.from_user.id)
-
+    # if user has active plan, get data from active_week field
     if result:
         await state.update_data(plan_id=result.id, dist=result.plan, week=result.active_week)
 
         dist = result.plan
         plan = plans[dist]
         week = result.active_week
-
+        # get tempos
         count_tempo = await db.get_paces_data(message.from_user.id, pace_id=result.pace_id)
         count_tempo_dict = dict(count_tempo.__dict__)
-
+        # format active week data
         content = format_plan_details(i18n.get("distances", dist=dist), plan[str(week)], week, count_tempo_dict,
                                       i18n, 3)
         await state.update_data(train_tempo=count_tempo_dict)
@@ -427,17 +411,19 @@ async def process_get_next_week_plan(message: Message, state: FSMContext, db: Da
 
 @router.message(Command(commands='make_week_completed'), StateFilter(FSMFillForm.make_week_completed))
 async def process_make_week_completed(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
+    """this handler works when user sand command make week completed"""
     data = await state.get_data()
 
     result = await db.make_week_completed(data['plan_id'], data['week'])
 
     await message.answer(text=i18n.makeweekcompleted(case=result, week=data['week'],
-                                                     plan=i18n.get("distances", dist=data['dist']) ))
+                                                     plan=i18n.get("distances", dist=data['dist'])))
     await state.clear()
 
 
 @router.message(Command(commands='enter_trainresults'), StateFilter(FSMFillForm.make_week_completed))
 async def process_enter_train_results(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
+    """this handler works when user wants to enter train results. Handler shows buttons with trains, which have results."""
     data = await state.get_data()
 
     results = await db.get_list_oftrains(data['plan_id'], data['week'])
@@ -445,60 +431,63 @@ async def process_enter_train_results(message: Message, state: FSMContext, db: D
                          'train2': i18n.get("trainresultsbuttons", button='train2'),
                          'train3': i18n.get("trainresultsbuttons", button='train3')
                          })
-    # buttons_dict = dict({'train1': '1-я тренировка',
-    #       'train2': '2-я тренировка', 'train3': '3-й тренировка'})
+
     for result in results:
         if result.train in buttons_dict.keys():
             buttons_dict.pop(result.train)
 
     if buttons_dict:
-        await message.answer(text=i18n.get("entertrainresults", case=0),       #'Выберите тренировку',
-                            reply_markup=create_inline_kb(1, buttons_dict))
+        await message.answer(text=i18n.get("entertrainresults", case=0),
+                             reply_markup=create_inline_kb(1, buttons_dict))
         await state.set_state(FSMFillForm.select_train_results)
 
     else:
-        await message.answer(text=i18n.get("entertrainresults", case=1))   #'Вы отметили все тренировки.'
-        # await state.clear()
+        await message.answer(text=i18n.get("entertrainresults", case=1))
 
 
 @router.callback_query(StateFilter(FSMFillForm.select_train_results), F.data.in_(["train1", "train2", "train3"]))
 async def process_select_train_results(callback: CallbackQuery, state: FSMContext, plans: dict, i18n: TranslatorRunner):
-    """Handler to take train results"""
+    """Handler to take train distans to enter results."""
     data = await state.get_data()
 
     # get train plan from plans
     train_plan = plans[data['dist']][str(data['week'])][callback.data]
 
-    # makes dict from trainplan
+    # takes dict from train plan
     intervals, goal_time = get_trainintervals(train_plan, callback.data, data['train_tempo'])
 
-    bottons = dict()
+    buttons = dict()
 
     await state.update_data(intervals=intervals, results=dict(), train=callback.data, goal_times=goal_time)
 
     for interval in intervals:
 
         if interval < 1:
-            bottons.update({str(interval): str(int(interval * 1000)) + 'm'})
+            buttons.update({str(interval): str(int(interval * 1000)) + 'm'})
 
         else:
-            bottons.update({str(interval): str(interval) + 'km'})
+            buttons.update({str(interval): str(interval) + 'km'})
 
-    await callback.message.answer(text=i18n.get("selecttrainresults"), #  'Выбери дистанцию, за которую надо внести результат',
-                                  reply_markup=create_inline_kb(1, bottons))
+    await callback.message.answer(text=i18n.get("selecttrainresults"),
+                                  reply_markup=create_inline_kb(1, buttons))
     await state.set_state(FSMFillForm.add_train_results)
 
 
 @router.callback_query(StateFilter(FSMFillForm.add_train_results), CheckIntervals())
-async def process_enter_train_results(callback: CallbackQuery, state: FSMContext, plans: dict, i18n: TranslatorRunner):
+async def process_enter_train_results(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
+    """this handler works when user selected distance and ready to enter results. If user only ones runs distance,
+    handler offers enter one result, if user covered distance several times, handler offers to enter best and worse
+    results."""
     data = await state.get_data()
 
     quantity = data['intervals'].get(float(callback.data))
 
     if quantity == 1:
-        text = i18n.get("addtrainresults", case=0, dist=str(callback.data)) # 'Введите результат для дистанции {} км'.format(callback.data)
+        text = i18n.get("addtrainresults", case=0,
+                        dist=str(callback.data))  # 'Введите результат для дистанции {} км'.format(callback.data)
     else:
-        text = i18n.get("addtrainresults", case=1, dist=str(callback.data)) # 'Введите лучший и худший результаты на интервале {} км'.format(callback.data)
+        text = i18n.get("addtrainresults", case=1, dist=str(
+            callback.data))  # 'Введите лучший и худший результаты на интервале {} км'.format(callback.data)
 
     await state.update_data(waiting_result=callback.data)
     await callback.message.answer(text=text)
@@ -507,19 +496,21 @@ async def process_enter_train_results(callback: CallbackQuery, state: FSMContext
 
 @router.message(StateFilter(FSMFillForm.wait_train_results), CheckTrainTimes())
 async def process_enter_times(message: Message, state: FSMContext, i18n: TranslatorRunner):
-
+    """this handler works when user enter right time and offers to select other distance or offers to save all
+    entered results."""
+    # transform entered times in list
     times = message.text.split(' ')
     data = await state.get_data()
-
+    # delete the interval for which the result was entered from list of intervals
     data['intervals'].pop(float(data['waiting_result']))
     goal = data['goal_times'][float(data['waiting_result'])]
     result_list = convert_times(times, goal)
-
+    # updates result dictionary
     data['results'].update({data['waiting_result']: result_list})
 
     await state.update_data(results=data['results'], waiting_result=None,
                             intervals=data['intervals'])
-
+    # if there are intervals ask to select interval, else offers to save result
     if data['intervals']:
         buttons = dict()
 
@@ -529,47 +520,52 @@ async def process_enter_times(message: Message, state: FSMContext, i18n: Transla
 
             else:
                 buttons.update({str(interval): str(interval) + 'km'})
-        await message.answer(text=i18n.get("waittrainresults", case=0),  #'Успешно! Выбери дистанцию, за которую надо внести результат',
+        await message.answer(text=i18n.get("waittrainresults", case=0),
+
                              reply_markup=create_inline_kb(1, buttons))
         await state.set_state(FSMFillForm.add_train_results)
     else:
-        await message.answer(text=i18n.get("waittrainresults", case=1)) #'Успешно! Сохранить - /save_trainresults')
+        await message.answer(text=i18n.get("waittrainresults", case=1))
         await state.set_state(FSMFillForm.wait_save_trainresult)
 
 
-@router.message(StateFilter(FSMFillForm.wait_save_trainresult))
+@router.message(Command(commands='save_trainresults'), StateFilter(FSMFillForm.wait_save_trainresult))
 async def process_save_results(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
+    """this handler works when user enter command save train result. Shows result and message if goal was achieved."""
     # get data from memorystorage
     data = await state.get_data()
     text_answer = list()
     for res in data['results']:
 
-        f = lambda x: str(float(x) * 1000) + "метров" if float(x) < 1 else x + " км"
+        # f = lambda x: str(float(x) * 1000) + "метров" if float(x) < 1 else x + " км"
+        f = lambda x: str(float(x) * 1000) + i18n.get("distance-measure", case='metr') if float(x) < 1 else (x
+                                                                        + i18n.get("distance-measure", case='km'))
         dist = f(res)
         restimes = data['results'][res]
-        print('Ваши результаты за дистанцию {}'.format(dist))
-        print('Целевое время {}. Фактическое время {} + {}'.format(restimes[0], restimes[1], restimes[2]))
+
         if restimes[2]:
             diff = restimes[2]
+            if diff.hour > 0:
+                diff = diff.strftime('%H:%M:%S')
+            else:
+                diff = diff.strftime('%M:%S')
         else:
             diff = ''
         if restimes[0] > restimes[1]:
-            print('Тренировка завершена успешно!')
+
             textres = i18n.get("showresults", dist=dist, goal=time_formatting(restimes[0]),
                                fact=time_formatting(restimes[1]), diff=diff,
                                case=0)
         else:
-            print('Получится следующий раз')
+
             textres = i18n.get("showresults", dist=dist, goal=time_formatting(restimes[0]),
                                fact=time_formatting(restimes[1]), diff=diff,
                                case=1)
         text_answer.append(textres)
 
-
-
     await db.add_train_results(message.from_user.id, data['plan_id'], data['week'], data['train'], data['results'])
     await message.answer(text=i18n.get("savetrainresult")
-                         + '/n'.join(text_answer)) #'Успешно!')
+                              + ''.join(text_answer))
     await state.clear()
     pass
 
@@ -582,19 +578,19 @@ async def process_showmyprofile(message: Message, i18n: TranslatorRunner, db: Da
     profile = await db.get_users_data(message.from_user.id)
 
     pulse_zones = i18n.get("showpulse", maxpulse=profile.max_pulse,
-                                beg1=0.5*profile.max_pulse, end1=0.6*profile.max_pulse,
-                                beg2=0.6*profile.max_pulse, end2=0.75*profile.max_pulse,
-                                beg3=0.75*profile.max_pulse, end3=0.85*profile.max_pulse,
-                                beg4=0.85*profile.max_pulse, end4=0.95*profile.max_pulse,
-                                beg5=0.95*profile.max_pulse, end5=1.0*profile.max_pulse)
+                           beg1=0.5 * profile.max_pulse, end1=0.6 * profile.max_pulse,
+                           beg2=0.6 * profile.max_pulse, end2=0.75 * profile.max_pulse,
+                           beg3=0.75 * profile.max_pulse, end3=0.85 * profile.max_pulse,
+                           beg4=0.85 * profile.max_pulse, end4=0.95 * profile.max_pulse,
+                           beg5=0.95 * profile.max_pulse, end5=1.0 * profile.max_pulse)
     try:
         await message.answer_photo(
-           photo=profile.photo,
-        caption=i18n.get("show_-data_", case=0, user_name=profile.user_name, user_age=profile.age,
-                                user_gender=profile.gender, weight=profile.weight, height=profile.height,
-                                imt=profile.imt,
-                                pulsezones=pulse_zones
-                                )
+            photo=profile.photo,
+            caption=i18n.get("show_-data_", case=0, user_name=profile.user_name, user_age=profile.age,
+                             user_gender=profile.gender, weight=profile.weight, height=profile.height,
+                             imt=profile.imt,
+                             pulsezones=pulse_zones
+                             )
         )
     except TelegramBadRequest:
         logger.error('Тут было исключение', profile.photo, exc_info=True)
@@ -602,11 +598,12 @@ async def process_showmyprofile(message: Message, i18n: TranslatorRunner, db: Da
 
 @router.message(Command('change_profile'), StateFilter(default_state))
 async def process_change_profile(message: Message, state: FSMContext, i18n: TranslatorRunner):
+    """this handler works when user waunt change profile data. Offers to select data to be changed."""
     # сохраняем в хранилище
-    buttons = dict({'age':i18n.get('changeprofile', case='age'),
-          'weight':i18n.get('changeprofile', case='weight'),
-          'height':i18n.get('changeprofile', case='height'),
-          'photo':i18n.get('changeprofile', case='photo')})
+    buttons = dict({'age': i18n.get('changeprofile', case='age'),
+                    'weight': i18n.get('changeprofile', case='weight'),
+                    'height': i18n.get('changeprofile', case='height'),
+                    'photo': i18n.get('changeprofile', case='photo')})
 
     await state.update_data(buttons=buttons)
 
@@ -617,7 +614,8 @@ async def process_change_profile(message: Message, state: FSMContext, i18n: Tran
 
 @router.callback_query(StateFilter(FSMFillForm.change_profile), F.data.in_(['age', 'weight', 'height', 'photo']))
 async def process_value_selected(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner):
-    # сохраняем в хранилище
+    """this handler works when user selected data to be changed."""
+    # save in storage
     await state.update_data(key=callback.data)
 
     await callback.message.answer(text=i18n.get('waitdata', case=0),
@@ -627,18 +625,20 @@ async def process_value_selected(callback: CallbackQuery, state: FSMContext, i18
 
 @router.message(StateFilter(FSMFillForm.wait_data), CheckProfileData())
 async def process_value_sent(message: Message, state: FSMContext, i18n: TranslatorRunner):
-    # получаем ключ из хранилища
+    """this handler works when user enter data. Handler save entered data into storage and ask if change something else
+    or save changes."""
+    # get key from storage
     data = await state.get_data()
     val = float(message.text.replace(',', '.'))
     buttons = dict([(k, v) for k, v in data['buttons'].items() if k != data['key']])
-    # сохраняем результат в соответствующих ключах
+    # save result in dictionary in storage
     if data['key'] == 'age':
         await state.update_data(age=val, buttons=buttons)
     elif data['key'] == 'weight':
         await state.update_data(weight=val, buttons=buttons)
     elif data['key'] == 'height':
         await state.update_data(height=val, buttons=buttons)
-    # выводим ответ и клавиатуру для выбора
+    # show message and keyboard to select data to change
     if buttons:
         await message.answer(text=i18n.get('waitdata', case=1),
                              reply_markup=create_inline_kb(1, buttons))
@@ -650,16 +650,17 @@ async def process_value_sent(message: Message, state: FSMContext, i18n: Translat
 
 @router.message(StateFilter(FSMFillForm.wait_data), F.photo[-1].as_('largest_photo'))
 async def process_photo_sent(message: Message, state: FSMContext, largest_photo: PhotoSize, i18n: TranslatorRunner):
-    # Cохраняем данные фото (file_unique_id и file_id) в хранилище
-    # по ключам "photo_unique_id" и "photo_id"
+    """this handler works when user sand photo and show keyboard to select data to change."""
+    # Save photo data (file_unique_id и file_id) in storage
+    # keys is "photo_unique_id" and "photo_id"
     await state.update_data(
         photo_unique_id=largest_photo.file_unique_id,
         photo_id=largest_photo.file_id
     )
-    # получаем ключ из хранилища
+    # get data from storage
     data = await state.get_data()
     buttons = dict([(k, v) for k, v in data['buttons'].items() if k != 'photo'])
-    # Отправляем пользователю сообщение с клавиатурой
+    # sends message and keyboard
     if buttons:
         await message.answer(text=i18n.get('waitdata', case=1),
                              reply_markup=create_inline_kb(1, buttons))
@@ -671,7 +672,8 @@ async def process_photo_sent(message: Message, state: FSMContext, largest_photo:
 
 @router.message(Command(commands='save_profile'), StateFilter(FSMFillForm.change_profile))
 async def process_get_data(message: Message, state: FSMContext, db: Database, i18n: TranslatorRunner):
-    # получаем ключ из хранилища
+    """this handler works when user wants to save changed profile data."""
+    # get data from storage
     data = await state.get_data()
     profile = await db.get_users_data(message.from_user.id)
     changed_profile = calculate_save(profile, **data)
@@ -683,14 +685,14 @@ async def process_get_data(message: Message, state: FSMContext, db: Database, i1
 
 @router.message(Command(commands='plan_my_race'), StateFilter(default_state))
 async def process_plan_my_race(message: Message, state: FSMContext, i18n: TranslatorRunner):
-
+    """this handler works when user select command to make plan for the race and offers to enter distance."""
     await message.answer(text=i18n.get('planmyrace', case=0))
     await state.set_state(FSMFillForm.get_race_dist)
 
 
 @router.message(StateFilter(FSMFillForm.get_race_dist), CheckDist())
 async def process_get_dist(message: Message, state: FSMContext, i18n: TranslatorRunner):
-
+    """this handler works when user enter distance and offers to enter goal time."""
     await state.update_data(dict=float(message.text.replace(',', '.')))
 
     distance = float(message.text)
@@ -703,6 +705,7 @@ async def process_get_dist(message: Message, state: FSMContext, i18n: Translator
 
 @router.message(StateFilter(FSMFillForm.get_race_time), CheckTime())
 async def process_get_race_time(message: Message, state: FSMContext, i18n: TranslatorRunner):
+    """this handler works when user enter goal time for distance and calculates plan for each km."""
     h, m, s = findall(r'(\d{2})', message.text)
     race_time = timedelta(hours=int(h), minutes=int(m), seconds=int(s))
     dist = await state.get_data()
@@ -717,15 +720,15 @@ async def process_get_race_time(message: Message, state: FSMContext, i18n: Trans
 
 @router.message(Command(commands='show_my_pulse_zones'))
 async def process_show_pulse_zones(message: Message, db: Database, i18n: TranslatorRunner):
-
+    """this handler works when user wants to see his/her pulse zones."""
     profile = await db.get_users_data(message.from_user.id)
     await message.answer(text=i18n.get("showpulse",
-    maxpulse = profile.max_pulse,
-    beg1 = 0.5 * profile.max_pulse, end1 = 0.6 * profile.max_pulse,
-    beg2 = 0.6 * profile.max_pulse, end2 = 0.75 * profile.max_pulse,
-    beg3 = 0.75 * profile.max_pulse, end3 = 0.85 * profile.max_pulse,
-    beg4 = 0.85 * profile.max_pulse, end4 = 0.95 * profile.max_pulse,
-    beg5 = 0.95 * profile.max_pulse, end5 = 1.0 * profile.max_pulse
+                                       maxpulse=profile.max_pulse,
+                                       beg1=0.5 * profile.max_pulse, end1=0.6 * profile.max_pulse,
+                                       beg2=0.6 * profile.max_pulse, end2=0.75 * profile.max_pulse,
+                                       beg3=0.75 * profile.max_pulse, end3=0.85 * profile.max_pulse,
+                                       beg4=0.85 * profile.max_pulse, end4=0.95 * profile.max_pulse,
+                                       beg5=0.95 * profile.max_pulse, end5=1.0 * profile.max_pulse
                                        ))
 
 
